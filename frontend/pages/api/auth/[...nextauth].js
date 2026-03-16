@@ -1,7 +1,7 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import dbConnect from '../../../lib/dbConnect';
-import User from '../../../models/User';
+import { db } from '../../../lib/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import bcrypt from 'bcryptjs';
 
 export default NextAuth({
@@ -13,14 +13,23 @@ export default NextAuth({
                 password: { label: "Password", type: "password" }
             },
             async authorize(credentials) {
-                await dbConnect();
+                if (!credentials?.username || !credentials?.password) {
+                    throw new Error('Please enter an email and password');
+                }
 
-                const user = await User.findOne({ username: credentials.username });
+                // Query Firestore for the user
+                const usersRef = collection(db, 'users');
+                const q = query(usersRef, where('username', '==', credentials.username.toLowerCase()));
+                const querySnapshot = await getDocs(q);
 
-                if (!user) {
+                if (querySnapshot.empty) {
                     throw new Error('No user found with this email');
                 }
 
+                const userDoc = querySnapshot.docs[0];
+                const user = userDoc.data();
+
+                // Compare passwords
                 const isValid = await bcrypt.compare(credentials.password, user.password);
 
                 if (!isValid) {
@@ -28,7 +37,7 @@ export default NextAuth({
                 }
 
                 return {
-                    id: user._id,
+                    id: userDoc.id,
                     name: user.name,
                     email: user.username,
                 };
@@ -43,4 +52,3 @@ export default NextAuth({
     },
     secret: process.env.NEXTAUTH_SECRET || 'f1-super-secret-key-12345',
 });
-
