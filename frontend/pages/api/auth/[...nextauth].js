@@ -1,26 +1,37 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
+import dbConnect from '../../../lib/dbConnect';
+import User from '../../../models/User';
+import bcrypt from 'bcryptjs';
 
 export default NextAuth({
     providers: [
         CredentialsProvider({
-            name: 'Admin Login',
+            name: 'Credentials',
             credentials: {
-                username: { label: "Username", type: "text", placeholder: "Your email or name" },
+                username: { label: "Username", type: "text" },
                 password: { label: "Password", type: "password" }
             },
             async authorize(credentials) {
-                // Personal tracker — accept any non-empty credentials
-                if (credentials?.username && credentials?.password) {
-                    return {
-                        id: 1,
-                        name: credentials.username.includes('@')
-                            ? credentials.username.split('@')[0]
-                            : credentials.username,
-                        email: credentials.username,
-                    };
+                await dbConnect();
+
+                const user = await User.findOne({ username: credentials.username });
+
+                if (!user) {
+                    throw new Error('No user found with this email');
                 }
-                return null;
+
+                const isValid = await bcrypt.compare(credentials.password, user.password);
+
+                if (!isValid) {
+                    throw new Error('Could not log you in! Incorrect password.');
+                }
+
+                return {
+                    id: user._id,
+                    name: user.name,
+                    email: user.username,
+                };
             }
         })
     ],
@@ -32,3 +43,4 @@ export default NextAuth({
     },
     secret: process.env.NEXTAUTH_SECRET || 'f1-super-secret-key-12345',
 });
+
