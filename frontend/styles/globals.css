@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   THEME VARIABLES
+───────────────────────────────────────────────────────────── */
+:root,
+[data-theme="dark"] {
+  --bg:          #0a0805;
+  --surface:     #13100a;
+  --card:        rgba(26, 21, 16, 0.7);
+  --border:      rgba(42, 32, 21, 0.7);
+  --text:        #fef9f0;
+  --text-sub:    #a8a29e;
+  --muted:       #78716c;
+  --muted-dim:   #44403c;
+  --nav-bg:      rgba(10, 8, 5, 0.85);
+  --scrollbar:   #f59e0b;
+  --glass:       rgba(20, 16, 12, 0.6);
+  --glass-border: rgba(245, 158, 11, 0.1);
+}
+
+[data-theme="light"] {
+  --bg:          #fffbf5;
+  --surface:     #fff7ed;
+  --card:        rgba(255, 255, 255, 0.75);
+  --border:      rgba(231, 224, 216, 0.8);
+  --text:        #1c1917;
+  --text-sub:    #44403c;
+  --muted:       #78716c;
+  --muted-dim:   #c7bdb4;
+  --nav-bg:      rgba(255, 251, 245, 0.85);
+  --scrollbar:   #f59e0b;
+  --glass:       rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(245, 158, 11, 0.2);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   BASE STYLES
+───────────────────────────────────────────────────────────── */
+@layer base {
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--bg);
+    color: var(--text);
+    font-family: 'Montserrat', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #fbbf24; }
+
+  /* ─── GLASSMORPHISM ── */
+  .glass {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+  }
+
+  /* ─── ANIMATIONS ── */
+  @keyframes float {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    33%       { transform: translateY(-10px) rotate(1deg); }
+    66%       { transform: translateY(-5px) rotate(-1deg); }
+  }
+  @keyframes pulse-glow {
+    0%, 100% { opacity: 0.35; scale: 1; }
+    50%       { opacity: 0.6; scale: 1.05; }
+  }
+  @keyframes shimmer-text {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(40px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes stagger-in {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes scale-up {
+    from { transform: scale(0.8); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+  }
+
+  /* Animation utility classes */
+  .animate-float       { animation: float      8s ease-in-out infinite; }
+  .animate-glow        { animation: pulse-glow 4s ease-in-out infinite; }
+  .animate-slide-up    { animation: slide-up   0.8s cubic-bezier(.22,1,.36,1) both; }
+  .animate-stagger-in  { animation: stagger-in 0.6s cubic-bezier(.22,1,.36,1) both; }
+  .animate-fade-in     { animation: fade-in    0.6s ease both; }
+  .animate-scale-up    { animation: scale-up   0.5s cubic-bezier(.22,1,.36,1) both; }
+  .animate-spin-slow   { animation: spin-slow  20s linear infinite; }
+
+  /* Gradient shimmer text utility */
+  .gradient-text {
+    background: linear-gradient(270deg, #f59e0b, #f97316, #ec4899, #a78bfa, #06b6d4, #10b981, #f59e0b);
+    background-size: 400% 400%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer-text 8s ease infinite;
+  }
+
+  /* Modern Card Lift */
+  .card-lift {
+    transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+  }
+  .card-lift:hover {
+    transform: translateY(-8px) scale(1.02);
+  }
+
+  /* Smooth Theme Transition on all elements */
+  nav, footer, section, div, button, a, input, textarea {
+    transition: background-color 0.4s ease, border-color 0.4s ease, color 0.3s ease, backdrop-filter 0.4s ease;
+  }
+}
