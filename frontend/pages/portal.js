@@ -3,7 +3,7 @@ import { signIn } from 'next-auth/react';
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 
-export default function Login() {
+export default function PortalPage() {
   const router = useRouter();
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState('');
@@ -52,21 +52,21 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
-         style={{ background: 'radial-gradient(ellipse at 50% 0%, #291800 0%, #0a0805 70%)' }}>
+         style={{ background: 'radial-gradient(ellipse at 50% 0%, #001029 0%, #0a0805 70%)' }}>
       <Head><title>Activity Tracker — {isRegister ? 'Create Account' : 'Sign In'}</title></Head>
 
       {/* Glow orbs */}
       <div className="absolute top-0 left-1/3 w-96 h-96 rounded-full blur-3xl pointer-events-none glow-pulse"
-           style={{ background: 'radial-gradient(circle, #f59e0b18 0%, transparent 70%)' }} />
+           style={{ background: 'radial-gradient(circle, #3b82f618 0%, transparent 70%)' }} />
       <div className="absolute bottom-0 right-1/3 w-72 h-72 rounded-full blur-3xl pointer-events-none glow-pulse"
-           style={{ background: 'radial-gradient(circle, #f9731615 0%, transparent 70%)', animationDelay: '1.5s' }} />
+           style={{ background: 'radial-gradient(circle, #60a5fa15 0%, transparent 70%)', animationDelay: '1.5s' }} />
 
       <div className="z-10 w-full max-w-md px-6 py-10">
         {/* Logo */}
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 float"
-               style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)' }}>
-            <span className="text-3xl">📊</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl mb-4 float shadow-[0_0_30px_rgba(59,130,246,0.3)]"
+               style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)' }}>
+            <span className="text-white font-black text-2xl tracking-tighter">AT</span>
           </div>
           <h1 className="text-3xl font-black text-white tracking-tight">Activity Tracker</h1>
           <p className="text-sm mt-2 font-medium" style={{ color: '#78716c' }}>
@@ -100,7 +100,7 @@ export default function Login() {
                   placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  onFocus={e => e.target.style.borderColor = '#f59e0b'}
+                  onFocus={e => e.target.style.borderColor = '#3b82f6'}
                   onBlur={e => e.target.style.borderColor = '#2a2015'}
                   required />
               </div>
@@ -115,7 +115,7 @@ export default function Login() {
                 placeholder="your@email.com"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                onFocus={e => e.target.style.borderColor = '#f59e0b'}
+                onFocus={e => e.target.style.borderColor = '#3b82f6'}
                 onBlur={e => e.target.style.borderColor = '#2a2015'}
                 required />
             </div>
@@ -129,13 +129,13 @@ export default function Login() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                onFocus={e => e.target.style.borderColor = '#f59e0b'}
+                onFocus={e => e.target.style.borderColor = '#3b82f6'}
                 onBlur={e => e.target.style.borderColor = '#2a2015'}
                 required />
             </div>
             <button type="submit" disabled={loading}
               className="w-full py-4 rounded-xl font-black text-sm tracking-wide text-white transition-all hover:opacity-90 disabled:opacity-50 mt-2"
-              style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 0 20px #f59e0b33' }}>
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)', boxShadow: '0 0 20px #3b82f633' }}>
               {loading ? 'Processing...' : isRegister ? 'CREATE ACCOUNT →' : 'START TRACKING →'}
             </button>
           </form>
@@ -143,7 +143,7 @@ export default function Login() {
           <div className="mt-8 pt-6 border-t border-[#2a2015] text-center">
             <button 
               onClick={() => { setIsRegister(!isRegister); setError(''); }}
-              className="text-xs font-black uppercase tracking-widest transition-all hover:text-[#f59e0b]"
+              className="text-xs font-black uppercase tracking-widest transition-all hover:text-[#3b82f6]"
               style={{ color: '#78716c' }}
             >
               {isRegister ? 'Already registered? Login' : 'New here? Create an account'}

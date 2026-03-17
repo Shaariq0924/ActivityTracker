@@ -19,7 +19,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 120 } },
 };
 
-export default function AnalyticsPage() {
+export default function InsightsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { theme, mounted } = useTheme();
@@ -30,7 +30,7 @@ export default function AnalyticsPage() {
   const [checked, setChecked] = useState({});
 
   useEffect(() => {
-    if (status === 'unauthenticated') router.push('/login');
+    if (status === 'unauthenticated') router.push('/portal');
   }, [status, router]);
 
   useEffect(() => {
@@ -58,18 +58,18 @@ export default function AnalyticsPage() {
   return (
     <div className="min-h-screen relative overflow-x-hidden" style={{ background: 'var(--bg)' }}>
       <Head><title>Analytics Interface — Activity Tracker</title></Head>
-      <NavBar session={session} active="/analytics" />
+      <NavBar session={session} active="/insights" />
 
       {/* Background Decorative Element */}
-      <div className="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none opacity-5">
-         <div className="absolute top-[10%] right-[5%] w-[500px] h-[500px] bg-[#f59e0b] rounded-full blur-[120px]" />
+      <div className="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none" style={{ opacity: isDark ? 0.05 : 0.08 }}>
+         <div className="absolute top-[10%] right-[5%] w-[500px] h-[500px] bg-[#3b82f6] rounded-full blur-[120px]" />
          <div className="absolute bottom-[20%] left-[10%] w-[400px] h-[400px] bg-[#3b82f6] rounded-full blur-[100px]" />
       </div>
 
-      <main className="max-w-6xl mx-auto px-6 py-12">
+      <main className="max-w-6xl mx-auto px-6 pt-12 pb-4">
         <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
            <h1 className="text-4xl md:text-5xl font-black tracking-tighter" style={{ color: 'var(--text)' }}>
-             Performance <span className="text-[#f59e0b]">Metrology</span>
+             Performance <span className="text-[#3b82f6]">Metrology</span>
            </h1>
            <p className="text-sm font-bold text-[var(--muted)] mt-2 uppercase tracking-widest">Aggregate behavioral data analysis</p>
         </motion.div>
@@ -85,7 +85,7 @@ export default function AnalyticsPage() {
              <div className="absolute top-0 right-0 p-6 opacity-[0.05] group-hover:opacity-10 transition-opacity">
                 <i className="fas fa-check-double text-7xl" />
              </div>
-             <div className="text-[10px] font-black uppercase tracking-widest text-[#10b981] mb-2 px-3 py-1 bg-[#10b98110] rounded-full w-fit">Operational Efficiency</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-[#10b981] mb-2 px-3 py-1 rounded-full w-fit" style={{ background: isDark ? 'rgba(16, 185, 129, 0.1)' : 'rgba(16, 185, 129, 0.15)' }}>Operational Efficiency</div>
              <div className="text-5xl font-black tracking-tighter" style={{ color: 'var(--text)' }}>{taskPct}%</div>
              <p className="text-xs font-bold text-[var(--muted)] mt-2">Overall task completion rate</p>
           </motion.div>
@@ -94,7 +94,7 @@ export default function AnalyticsPage() {
              <div className="absolute top-0 right-0 p-6 opacity-[0.05] group-hover:opacity-10 transition-opacity">
                 <i className="fas fa-bolt text-7xl" />
              </div>
-             <div className="text-[10px] font-black uppercase tracking-widest text-[#f59e0b] mb-2 px-3 py-1 bg-[#f59e0b10] rounded-full w-fit">Habit Consistency</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-[#3b82f6] mb-2 px-3 py-1 rounded-full w-fit" style={{ background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.15)' }}>Habit Consistency</div>
              <div className="text-5xl font-black tracking-tighter" style={{ color: 'var(--text)' }}>{avgHabitPct}%</div>
              <p className="text-xs font-bold text-[var(--muted)] mt-2">Average habit target fulfillment</p>
           </motion.div>
@@ -103,7 +103,7 @@ export default function AnalyticsPage() {
              <div className="absolute top-0 right-0 p-6 opacity-[0.05] group-hover:opacity-10 transition-opacity">
                 <i className="fas fa-calendar-alt text-7xl" />
              </div>
-             <div className="text-[10px] font-black uppercase tracking-widest text-[#3b82f6] mb-2 px-3 py-1 bg-[#3b82f610] rounded-full w-fit">System Load</div>
+              <div className="text-[10px] font-black uppercase tracking-widest text-[#3b82f6] mb-2 px-3 py-1 rounded-full w-fit" style={{ background: isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.15)' }}>System Load</div>
              <div className="text-5xl font-black tracking-tighter" style={{ color: 'var(--text)' }}>{habits.length + tasks.length}</div>
              <p className="text-xs font-bold text-[var(--muted)] mt-2">Total active parameters tracked</p>
           </motion.div>
@@ -152,9 +152,9 @@ export default function AnalyticsPage() {
                         transition={{ delay: 0.6 + (i * 0.02) }}
                         className="aspect-square rounded-[8px] flex items-center justify-center text-[8px] font-black group relative"
                         style={{ 
-                          background: completionCount > 0 ? `rgba(245, 158, 11, ${0.1 + opacity * 0.9})` : 'var(--surface)',
-                          color: completionCount > (maxPossible / 2) ? '#000' : 'var(--muted)',
-                          border: day === new Date().getDate() ? '1px solid #f59e0b' : '1px solid transparent'
+                          background: completionCount > 0 ? `rgba(59, 130, 246, ${0.1 + opacity * 0.9})` : 'var(--surface)',
+                          color: completionCount > (maxPossible / 2) ? '#fff' : 'var(--muted)',
+                          border: day === new Date().getDate() ? '1px solid #3b82f6' : '1px solid transparent'
                         }}
                       >
                          {day}
@@ -169,7 +169,7 @@ export default function AnalyticsPage() {
                  <div className="flex items-center justify-between">
                     <div>
                        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-1">Peak Performance Day</div>
-                       <div className="text-xl font-black text-[#f59e0b]">DAY 14</div>
+                       <div className="text-xl font-black text-[#10b981]">DAY 14</div>
                     </div>
                     <div className="text-right">
                        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-1">System Entropy</div>
@@ -181,11 +181,6 @@ export default function AnalyticsPage() {
         </div>
       </main>
 
-      <footer className="py-20 border-t border-[var(--border)]/30 mt-12 bg-black/20">
-         <div className="max-w-6xl mx-auto px-6 text-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[var(--muted)] opacity-50">METRICS ENGINE EXTERNALLY SYNCED · ENCRYPTED LOCAL STORAGE</p>
-         </div>
-      </footer>
     </div>
   );
 }

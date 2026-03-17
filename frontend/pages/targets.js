@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import NavBar from '@/components/NavBar';
 import { useTheme } from '@/pages/_app';
 
-export default function GoalsPage() {
+export default function TargetsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { theme, mounted } = useTheme();
@@ -16,7 +16,7 @@ export default function GoalsPage() {
   const [target, setTarget] = useState('');
 
   useEffect(() => {
-    if (status === 'unauthenticated') router.push('/login');
+    if (status === 'unauthenticated') router.push('/portal');
   }, [status, router]);
 
   useEffect(() => {
@@ -45,15 +45,15 @@ export default function GoalsPage() {
   return (
     <div className="min-h-screen relative" style={{ background: 'var(--bg)' }}>
       <Head><title>Strategic Objectives — Activity Tracker</title></Head>
-      <NavBar session={session} active="/goals" />
+      <NavBar session={session} active="/targets" />
 
       {/* Decorative Orbs */}
       <div className="fixed inset-0 pointer-events-none -z-10">
-         <div className="absolute top-1/4 right-[20%] w-[300px] h-[300px] bg-[#10b981] rounded-full blur-[100px] opacity-[0.05]" />
-         <div className="absolute bottom-1/4 left-[20%] w-[300px] h-[300px] bg-[#8b5cf6] rounded-full blur-[100px] opacity-[0.05]" />
+         <div className="absolute top-1/4 right-[20%] w-[300px] h-[300px] bg-[#10b981] rounded-full blur-[100px]" style={{ opacity: isDark ? 0.05 : 0.08 }} />
+         <div className="absolute bottom-1/4 left-[20%] w-[300px] h-[300px] bg-[#8b5cf6] rounded-full blur-[100px]" style={{ opacity: isDark ? 0.05 : 0.08 }} />
       </div>
 
-      <main className="max-w-4xl mx-auto px-6 py-16">
+      <main className="max-w-4xl mx-auto px-6 pt-16 pb-4">
         <motion.header initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
            <h1 className="text-4xl font-black tracking-tighter" style={{ color: 'var(--text)' }}>Strategic <span className="text-[#10b981]">Targets</span></h1>
            <p className="text-sm font-bold text-[var(--muted)] mt-2 uppercase tracking-widest">Long-range behavioral objectives</p>
@@ -122,11 +122,6 @@ export default function GoalsPage() {
         </div>
       </main>
 
-      <footer className="py-20 border-t border-[var(--border)]/30 mt-12">
-         <div className="max-w-4xl mx-auto px-6 text-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--muted)] opacity-50">STRATEGIC PLANNING INTERFACE · PERSISTENT DATA LAYER ACTIVE</p>
-         </div>
-      </footer>
     </div>
   );
 }

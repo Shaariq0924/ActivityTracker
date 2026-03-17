@@ -5,11 +5,11 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const NAV_LINKS = [
-  { href: '/',          label: 'Dashboard', icon: 'fa-th-large',       color: '#f59e0b' },
-  { href: '/daily',     label: 'Daily',     icon: 'fa-calendar-check', color: '#10b981' },
-  { href: '/goals',     label: 'Goals',     icon: 'fa-bullseye',       color: '#3b82f6' },
-  { href: '/analytics', label: 'Analytics', icon: 'fa-chart-bar',      color: '#8b5cf6' },
-  { href: '/focus',     label: 'Focus',     icon: 'fa-stopwatch',      color: '#f97316' },
+  { href: '/', label: 'Dashboard', icon: 'fa-th-large', color: '#3b82f6' },
+  { href: '/flow', label: 'Flow', icon: 'fa-wind', color: '#3b82f6' },
+  { href: '/targets', label: 'Targets', icon: 'fa-bullseye', color: '#3b82f6' },
+  { href: '/insights', label: 'Insights', icon: 'fa-chart-bar', color: '#3b82f6' },
+  { href: '/focus', label: 'Focus', icon: 'fa-stopwatch', color: '#3b82f6' },
 ];
 
 export default function NavBar({ session, active = '/' }) {
@@ -26,74 +26,96 @@ export default function NavBar({ session, active = '/' }) {
 
   return (
     <>
-      <nav className="relative flex items-center justify-between px-5 py-3 border-b sticky top-0 z-50 backdrop-blur-md transition-all duration-300"
-           style={{ background: 'var(--nav-bg)', borderColor: 'var(--border)' }}>
+      <div className="fixed top-0 left-0 right-0 h-24 pointer-events-none z-[60] bg-gradient-to-b from-[var(--background-main)] to-transparent opacity-80" />
 
-        {/* Left — Logo */}
-        <Link href="/" className="flex items-center gap-2.5 flex-shrink-0 group z-50">
-          <div className="w-8 h-8 rounded-lg flex items-center justify-center transition-all group-hover:scale-110 shadow-lg"
-               style={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)' }}>
-            <i className="fas fa-chart-line text-black text-xs" />
+      <div className="sticky top-6 z-50 px-4 mb-4">
+        <nav className="max-w-7xl mx-auto flex items-center justify-between px-6 py-2.5 rounded-[2.5rem] border backdrop-blur-2xl transition-all duration-500 shadow-[0_8px_32px_rgba(0,0,0,0.4)] relative overflow-hidden group/nav"
+          style={{
+            background: isDark ? 'rgba(15, 15, 15, 0.7)' : 'rgba(255, 255, 255, 0.95)',
+            borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.1)',
+            boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.05)' : '0 8px 32px rgba(0,0,0,0.05), inset 0 0 0 1px rgba(0,0,0,0.02)'
+          }}>
+
+          {/* Subtle Inner Glow */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-[#3b82f605] to-transparent pointer-events-none" />
+
+          {/* Left — Logo */}
+          <Link href="/" className="flex items-center gap-3 flex-shrink-0 group z-50">
+            <div className="w-9 h-9 rounded-2xl flex items-center justify-center transition-all duration-500 group-hover:rotate-[360deg] shadow-[0_0_20px_rgba(59,130,246,0.3)]"
+              style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)' }}>
+              <span className="text-black font-black text-xs tracking-tighter">AT</span>
+            </div>
+            <div className="flex flex-col">
+              <span className="font-black tracking-tighter text-xs leading-none" style={{ color: isDark ? '#fff' : '#000' }}>
+                ACTIVITY <span className="text-[#3b82f6]">TRACKER</span>
+              </span>
+              <span className="text-[8px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mt-1 flex items-center gap-1">
+                v1.0 <span className="w-1 h-1 rounded-full bg-[#3b82f6] animate-pulse" /> BETA
+              </span>
+            </div>
+          </Link>
+
+          {/* Center — Desktop Nav links */}
+          <div className="hidden md:flex items-center gap-1 p-1 rounded-2xl border transition-colors"
+               style={{ background: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)', borderColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)' }}>
+            {NAV_LINKS.map(n => {
+              const isActive = active === n.href;
+              return (
+                <Link key={n.href} href={n.href}
+                  className="px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 relative group/item overflow-hidden"
+                  style={isActive ? { color: '#fff' } : { color: 'var(--text-muted)' }}
+                >
+                  {isActive && (
+                    <motion.div
+                      layoutId="activeNavBG"
+                      className="absolute inset-0 bg-gradient-to-r from-[#3b82f6] to-[#60a5fa] z-0"
+                      transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                    />
+                  )}
+                  <i className={`fas ${n.icon} text-[10px] z-10 transition-colors duration-300 ${isActive ? (isDark ? 'text-black' : 'text-white') : ''}`} />
+                  <span className={`z-10 transition-colors duration-300 ${isActive ? (isDark ? 'text-black' : 'text-white') : 'group-hover/item:text-[var(--text-primary)]'}`}>{n.label}</span>
+                </Link>
+              );
+            })}
           </div>
-          <span className="font-black tracking-tight text-sm sm:block" style={{ color: 'var(--text)' }}>
-            Activity Tracker
-          </span>
-        </Link>
 
-        {/* Center — Desktop Nav links */}
-        <div className="absolute left-1/2 -translate-x-1/2 hidden md:flex items-center gap-0.5">
-          {NAV_LINKS.map(n => {
-            const isActive = active === n.href;
-            return (
-              <Link key={n.href} href={n.href}
-                className="px-3 py-2 rounded-lg text-xs font-black transition-all flex items-center gap-1.5 relative group"
-                style={isActive ? { color: n.color, background: n.color + '18' } : { color: 'var(--muted)' }}
-              >
-                <i className={`fas ${n.icon} text-[10px]`} />
-                {n.label}
-                {isActive && (
-                  <motion.span 
-                    layoutId="activeNav"
-                    className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full" 
-                    style={{ background: n.color }} 
-                  />
-                )}
-              </Link>
-            );
-          })}
-        </div>
+          {/* Right — Actions */}
+          <div className="flex items-center gap-3 z-50">
+            {/* Desktop Account Icon (Simulated) */}
+            <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-colors group-hover/nav:border-white/10"
+                 style={{ background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)', borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.08)' }}>
+              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#3b82f6] to-[#60a5fa] flex items-center justify-center text-[8px] font-black text-white">
+                {session?.user?.name?.charAt(0) || 'S'}
+              </div>
+              <div className="w-[1px] h-3" style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
+              <button onClick={() => signOut()} className="text-[8px] font-black text-[var(--text-muted)] hover:text-red-400 transition-colors uppercase tracking-widest">
+                Secure Exit
+              </button>
+            </div>
 
-        {/* Right — Actions */}
-        <div className="flex items-center gap-2 z-50">
-          {/* Theme toggle (Always visible) */}
-          <button onClick={toggle}
-            className="w-8 h-8 rounded-lg flex items-center justify-center border transition-all hover:scale-110 glass"
-            style={{ borderColor: 'var(--border)', color: isDark ? '#fbbf24' : '#6366f1' }}
-            suppressHydrationWarning>
-            {mounted ? (
-              <i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'} text-xs`} />
-            ) : (
-              <i className="fas fa-circle-half-stroke text-xs opacity-50" />
-            )}
-          </button>
+            {/* Theme toggle */}
+            <button onClick={toggle}
+              className="w-9 h-9 rounded-2xl flex items-center justify-center border transition-all duration-300 hover:scale-105 active:scale-95 glass hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+              style={{ borderColor: 'rgba(255,255,255,0.1)', color: isDark ? '#60a5fa' : '#3b82f6' }}
+              suppressHydrationWarning>
+              {mounted ? (
+                <i className={`fas ${isDark ? 'fa-sun' : 'fa-moon'} text-xs`} />
+              ) : (
+                <i className="fas fa-circle-half-stroke text-xs opacity-50" />
+              )}
+            </button>
 
-          {/* Desktop Sign Out */}
-          <button onClick={() => signOut()}
-            className="hidden md:flex px-3 py-1.5 rounded-lg text-[10px] font-black border transition-all hover:border-red-500/50 hover:text-red-500 glass"
-            style={{ color: 'var(--muted)', borderColor: 'var(--border)' }}>
-            <i className="fas fa-right-from-bracket mr-1.5" /> SIGN OUT
-          </button>
-
-          {/* Mobile Menu Toggle */}
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden w-8 h-8 rounded-lg flex items-center justify-center border glass transition-all"
-            style={{ borderColor: 'var(--border)', color: 'var(--text)' }}
-          >
-            <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-bars'} text-xs`} />
-          </button>
-        </div>
-      </nav>
+            {/* Mobile Menu Toggle */}
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="md:hidden w-9 h-9 rounded-2xl flex items-center justify-center border glass transition-all"
+              style={{ borderColor: 'rgba(255,255,255,0.1)', color: 'var(--text-primary)' }}
+            >
+              <i className={`fas ${isMenuOpen ? 'fa-times' : 'fa-bars-staggered'} text-xs`} />
+            </button>
+          </div>
+        </nav>
+      </div>
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
@@ -104,10 +126,10 @@ export default function NavBar({ session, active = '/' }) {
             exit={{ opacity: 0, y: -20 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed inset-0 z-40 md:hidden flex flex-col pt-20 px-6 backdrop-blur-xl"
-            style={{ background: 'var(--bg-glass)' }}
+            style={{ background: 'var(--glass-overlay)' }}
           >
             <div className="flex flex-col gap-2">
-              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--muted)] mb-4 ml-2 opacity-50">Navigation</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] mb-4 ml-2 opacity-50">Navigation</div>
               {NAV_LINKS.map((n, i) => {
                 const isActive = active === n.href;
                 return (
@@ -117,18 +139,18 @@ export default function NavBar({ session, active = '/' }) {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05 }}
                   >
-                    <Link 
+                    <Link
                       href={n.href}
                       onClick={() => setIsMenuOpen(false)}
                       className="flex items-center justify-between p-4 rounded-2xl border transition-all"
-                      style={{ 
-                        background: isActive ? n.color + '12' : 'var(--surface)',
-                        borderColor: isActive ? n.color + '40' : 'var(--border)',
-                        color: isActive ? n.color : 'var(--text)'
+                      style={{
+                        background: isActive ? n.color + '12' : 'var(--surface-layer)',
+                        borderColor: isActive ? n.color + '40' : 'var(--border-color)',
+                        color: isActive ? n.color : 'var(--text-primary)'
                       }}
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: isActive ? n.color : 'var(--border-muted)', color: isActive ? '#000' : 'var(--text)' }}>
+                        <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{ background: isActive ? n.color : 'var(--surface-layer)', color: isActive ? '#fff' : 'var(--text-primary)' }}>
                           <i className={`fas ${n.icon} text-sm`} />
                         </div>
                         <span className="font-black text-sm uppercase tracking-wider">{n.label}</span>
@@ -141,21 +163,21 @@ export default function NavBar({ session, active = '/' }) {
             </div>
 
             <div className="mt-auto mb-10 space-y-4">
-               <div className="p-4 rounded-2xl glass border border-[var(--border)] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                     <div className="w-10 h-10 rounded-full bg-[var(--surface)] flex items-center justify-center font-black text-xs border border-[var(--border)]">
-                        {session?.user?.name?.charAt(0) || 'U'}
-                     </div>
-                     <div>
-                        <div className="text-xs font-black" style={{ color: 'var(--text)' }}>{session?.user?.name || 'User Account'}</div>
-                        <div className="text-[9px] font-bold text-[var(--muted)] uppercase tracking-widest">Active Session</div>
-                     </div>
+              <div className="p-4 rounded-2xl glass border border-[var(--border-color)] flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-[var(--surface-layer)] flex items-center justify-center font-black text-xs border border-[var(--border-color)]">
+                    {session?.user?.name?.charAt(0) || 'U'}
                   </div>
-                  <button onClick={() => signOut()} className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center">
-                     <i className="fas fa-power-off text-sm" />
-                  </button>
-               </div>
-               <p className="text-center text-[9px] font-black uppercase tracking-[0.3em] text-[var(--muted)] opacity-30">Activity Tracker Mobile Core v2.0</p>
+                  <div>
+                    <div className="text-xs font-black" style={{ color: 'var(--text-primary)' }}>{session?.user?.name || 'User Account'}</div>
+                    <div className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Active Session</div>
+                  </div>
+                </div>
+                <button onClick={() => signOut()} className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 border border-red-500/20 flex items-center justify-center">
+                  <i className="fas fa-power-off text-sm" />
+                </button>
+              </div>
+              <p className="text-center text-[9px] font-black uppercase tracking-[0.3em] text-[var(--text-muted)] opacity-30">Activity Tracker Mobile Core v1.0</p>
             </div>
           </motion.div>
         )}

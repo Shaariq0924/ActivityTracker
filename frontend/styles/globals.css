@@ -7,33 +7,33 @@
 ───────────────────────────────────────────────────────────── */
 :root,
 [data-theme="dark"] {
-  --bg:          #0a0805;
-  --surface:     #13100a;
-  --card:        rgba(26, 21, 16, 0.7);
-  --border:      rgba(42, 32, 21, 0.7);
-  --text:        #fef9f0;
-  --text-sub:    #a8a29e;
-  --muted:       #78716c;
-  --muted-dim:   #44403c;
-  --nav-bg:      rgba(10, 8, 5, 0.85);
-  --scrollbar:   #f59e0b;
-  --glass:       rgba(20, 16, 12, 0.6);
-  --glass-border: rgba(245, 158, 11, 0.1);
+  --background-main:      #0a0805;
+  --surface-layer:        #13100a;
+  --card-background:      rgba(26, 21, 16, 0.7);
+  --border-color:         rgba(42, 32, 21, 0.7);
+  --text-primary:         #fef9f0;
+  --text-secondary:       #a8a29e;
+  --text-muted:           #78716c;
+  --text-muted-faint:     #44403c;
+  --navigation-bg:        rgba(10, 8, 5, 0.85);
+  --scrollbar-thumb:      #3b82f6;
+  --glass-overlay:        rgba(10, 12, 20, 0.6);
+  --glass-border-color:   rgba(59, 130, 246, 0.1);
 }
 
 [data-theme="light"] {
-  --bg:          #fffbf5;
-  --surface:     #fff7ed;
-  --card:        rgba(255, 255, 255, 0.75);
-  --border:      rgba(231, 224, 216, 0.8);
-  --text:        #1c1917;
-  --text-sub:    #44403c;
-  --muted:       #78716c;
-  --muted-dim:   #c7bdb4;
-  --nav-bg:      rgba(255, 251, 245, 0.85);
-  --scrollbar:   #f59e0b;
-  --glass:       rgba(255, 255, 255, 0.6);
-  --glass-border: rgba(245, 158, 11, 0.2);
+  --background-main:      #ffffff;
+  --surface-layer:        #f8fafc;
+  --card-background:      rgba(255, 255, 255, 0.9);
+  --border-color:         rgba(0, 0, 0, 0.06);
+  --text-primary:         #0f172a;
+  --text-secondary:       #334155;
+  --text-muted:           #64748b;
+  --text-muted-faint:     #94a3b8;
+  --navigation-bg:        rgba(255, 255, 255, 0.8);
+  --scrollbar-thumb:      #3b82f6;
+  --glass-overlay:        rgba(255, 255, 255, 0.8);
+  --glass-border-color:   rgba(59, 130, 246, 0.15);
 }
 
 /* ─────────────────────────────────────────────────────────────
@@ -44,8 +44,8 @@
   html { scroll-behavior: smooth; }
 
   body {
-    background-color: var(--bg);
-    color: var(--text);
+    background-color: var(--background-main);
+    color: var(--text-primary);
     font-family: 'Montserrat', sans-serif;
     -webkit-font-smoothing: antialiased;
     transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -58,16 +58,16 @@
 
   /* Scrollbar */
   ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: var(--surface); }
-  ::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #fbbf24; }
+  ::-webkit-scrollbar-track { background: var(--surface-layer); }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+  ::-webkit-scrollbar-thumb:hover { background: #60a5fa; }
 
   /* ─── GLASSMORPHISM ── */
   .glass {
-    background: var(--glass);
+    background: var(--glass-overlay);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
+    border: 1px solid var(--glass-border-color);
   }
 
   /* ─── ANIMATIONS ── */
@@ -117,7 +117,7 @@
 
   /* Gradient shimmer text utility */
   .gradient-text {
-    background: linear-gradient(270deg, #f59e0b, #f97316, #ec4899, #a78bfa, #06b6d4, #10b981, #f59e0b);
+    background: linear-gradient(270deg, #3b82f6, #60a5fa, #ec4899, #a78bfa, #06b6d4, #10b981, #3b82f6);
     background-size: 400% 400%;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;

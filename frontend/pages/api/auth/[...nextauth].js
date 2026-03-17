@@ -45,7 +45,7 @@ export default NextAuth({
         })
     ],
     pages: {
-        signIn: '/login',
+        signIn: '/portal',
     },
     session: {
         strategy: 'jwt',

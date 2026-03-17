@@ -10,6 +10,13 @@ const firebaseConfig = {
   appId: process.env.FIREBASE_APP_ID,
 };
 
+// Sanity check for environment variables
+const isConfigValid = firebaseConfig.projectId && firebaseConfig.apiKey;
+
+if (!isConfigValid) {
+  console.error('❌ Firebase Configuration Error: Missing mandatory environment variables. Check your .env.local file.');
+}
+
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
