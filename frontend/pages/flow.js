@@ -7,8 +7,8 @@ import NavBar from '@/components/NavBar';
 import { useTheme } from '@/pages/_app';
 
 // ─── HABITS DATA ─────────────────────────────────────────────────────────────
-const DAYS_IN_MONTH = 31;
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const getDaysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
 const DEFAULT_HABITS = [
   { id: 1, name: 'Exercise',        emoji: '🏋️', color: '#10b981', goal: 30 },
   { id: 2, name: 'Reading',         emoji: '📖', color: '#3b82f6', goal: 25 },
@@ -51,6 +51,9 @@ export default function FlowPage() {
   const [habitMonth, setHabitMonth] = useState(new Date().getMonth());
   const currentDay = new Date().getDate();
   const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const daysInMonth = getDaysInMonth(habitMonth, currentYear);
+  const monthKey = `${currentYear}-${habitMonth}`;
 
   // ── Tasks state ───────────────────────────────────────────────────────────
   const [tasks, setTasks] = useState([]);
@@ -72,7 +75,8 @@ export default function FlowPage() {
 
   const getStreak = (habitId) => {
     let streak = 0;
-    const habitChecked = checked[habitId] || {};
+    const currentMonthKey = `${currentYear}-${currentMonth}`;
+    const habitChecked = (checked[habitId] || {})[currentMonthKey] || {};
     for (let i = currentDay; i >= 1; i--) {
       if (habitChecked[i]) streak++;
       else if (i < currentDay) break;
@@ -163,7 +167,7 @@ export default function FlowPage() {
     localStorage.setItem('at-edu-notes', JSON.stringify(updated));
   };
 
-  const completedToday = habits.filter(h => checked[h.id]?.[currentDay]).length;
+  const completedToday = habits.filter(h => checked[h.id]?.[`${currentYear}-${currentMonth}`]?.[currentDay]).length;
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
   const taskPct = tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0;
   const filteredTasks = tasks.filter(t => filter === 'All' ? true : t.status === filter);
@@ -253,8 +257,8 @@ export default function FlowPage() {
                
                {/* Global Month Progress */}
                {(() => {
-                  const total = habits.reduce((s, h) => s + (h.goal || 31), 0);
-                  const done  = habits.reduce((s, h) => s + Math.min(Object.values(checked[h.id] || {}).filter(Boolean).length, h.goal || 31), 0);
+                  const total = habits.reduce((s, h) => s + (h.goal || daysInMonth), 0);
+                  const done  = habits.reduce((s, h) => s + Math.min(Object.values((checked[h.id] || {})[monthKey] || {}).filter(Boolean).length, h.goal || daysInMonth), 0);
                   const pct   = total ? Math.round((done / total) * 100) : 0;
                   return (
                     <div className="flex-1 glass rounded-xl px-5 py-2 flex items-center justify-between border border-[var(--glass-border-color)]">
@@ -282,7 +286,7 @@ export default function FlowPage() {
                       <th className="px-6 py-4 sticky left-0 z-20 glass backdrop-blur-xl border-r border-[var(--border-color)]">
                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Identity</span>
                       </th>
-                      {Array.from({ length: DAYS_IN_MONTH }).map((_, i) => (
+                      {Array.from({ length: daysInMonth }).map((_, i) => (
                         <th key={i} className="px-1 text-center min-w-[38px]">
                            <span className={`text-[10px] font-black ${i+1 === currentDay && habitMonth === currentMonth ? 'text-[#3b82f6]' : 'text-[var(--text-muted)]'}`}>
                               {(i+1).toString().padStart(2, '0')}
@@ -296,8 +300,8 @@ export default function FlowPage() {
                   </thead>
                   <tbody>
                     {habits.map((h, idx) => {
-                      const done = Object.values(checked[h.id] || {}).filter(Boolean).length;
-                      const goal = h.goal || 31;
+                      const done = Object.values((checked[h.id] || {})[monthKey] || {}).filter(Boolean).length;
+                      const goal = h.goal || daysInMonth;
                       const pct  = Math.min(Math.round((done / goal) * 100), 100);
                       return (
                         <tr key={h.id} className="border-b border-[var(--border-color)]/50 group">
@@ -319,24 +323,35 @@ export default function FlowPage() {
                                    )}
                                </div>
                            </td>
-                           {Array.from({ length: DAYS_IN_MONTH }).map((_, i) => {
+                           {Array.from({ length: daysInMonth }).map((_, i) => {
                               const day = i + 1;
-                              const isChecked = checked[h.id]?.[day];
+                              const isChecked = (checked[h.id] || {})[monthKey]?.[day];
+                              const isClickable = day === currentDay && habitMonth === currentMonth;
                               return (
                                 <td key={i} className="p-1">
                                    <button 
                                       onClick={() => {
-                                        const updated = { ...checked, [h.id]: { ...checked[h.id], [day]: !isChecked } };
+                                        if (!isClickable) return;
+                                        const habitData = checked[h.id] || {};
+                                        const monthData = habitData[monthKey] || {};
+                                        const updated = { 
+                                          ...checked, 
+                                          [h.id]: { 
+                                            ...habitData, 
+                                            [monthKey]: { ...monthData, [day]: !isChecked } 
+                                          } 
+                                        };
                                         setChecked(updated);
                                         localStorage.setItem('at-checked', JSON.stringify(updated));
                                       }}
-                                      className="w-6 h-6 rounded-[7px] transition-all relative flex items-center justify-center group/btn"
+                                      className={`w-6 h-6 rounded-[7px] transition-all relative flex items-center justify-center group/btn ${!isClickable ? 'cursor-not-allowed opacity-50' : ''}`}
                                       style={{ 
                                         backgroundColor: isChecked ? h.color : 'transparent',
                                         border: isChecked ? `1px solid ${h.color}` : '1px solid var(--border-color)'
                                       }}
+                                      disabled={!isClickable}
                                    >
-                                      {isChecked ? <i className={`fas fa-check text-[9px] ${isDark ? 'text-black' : 'text-white'}`} /> : <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted-faint)] opacity-0 group-hover/btn:opacity-100" />}
+                                      {isChecked ? <i className={`fas fa-check text-[9px] ${isDark ? 'text-black' : 'text-white'}`} /> : (isClickable && <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted-faint)] opacity-0 group-hover/btn:opacity-100" />)}
                                    </button>
                                 </td>
                               );

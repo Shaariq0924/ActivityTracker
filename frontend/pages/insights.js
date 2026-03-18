@@ -41,17 +41,35 @@ export default function InsightsPage() {
     } catch {}
   }, []);
 
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth();
+  const monthKey = `${currentYear}-${currentMonth}`;
+  const getDaysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
+  const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+
   const totalTasks = tasks.length;
   const doneTasks = tasks.filter(t => t.status === 'Completed').length;
   const taskPct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
   const habitStats = habits.map(h => {
-    const d = Object.values(checked[h.id] || {}).filter(Boolean).length;
-    const g = h.goal || 31;
+    const monthData = (checked[h.id] || {})[monthKey] || {};
+    const d = Object.values(monthData).filter(Boolean).length;
+    const g = h.goal || daysInMonth;
     return { ...h, done: d, goal: g, pct: Math.min(Math.round((d / g) * 100), 100) };
   });
 
   const avgHabitPct = habitStats.length ? Math.round(habitStats.reduce((s, h) => s + h.pct, 0) / habitStats.length) : 0;
+
+  let peakDay = 1;
+  let maxCount = 0;
+  const dayCounts = Array.from({ length: daysInMonth }).map((_, i) => {
+    const day = i + 1;
+    const count = habits.filter(h => (checked[h.id] || {})[monthKey]?.[day]).length;
+    if (count > maxCount) { maxCount = count; peakDay = day; }
+    return count;
+  });
+  const peakPerformanceText = maxCount > 0 ? `DAY ${peakDay}` : 'N/A';
+  const entropy = avgHabitPct > 70 ? 'LOW' : avgHabitPct > 40 ? 'MEDIUM' : 'HIGH';
 
   const isAuthLoading = status === 'loading';
 
@@ -139,9 +157,8 @@ export default function InsightsPage() {
            <motion.section initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.5 }} className="glass rounded-[40px] p-8 border border-[var(--border)] overflow-hidden relative">
               <h2 className="text-xl font-black uppercase tracking-tighter mb-8" style={{ color: 'var(--text)' }}>Cyclic Activity Heatmap</h2>
               <div className="grid grid-cols-7 gap-2">
-                 {Array.from({ length: 31 }).map((_, i) => {
+                 {dayCounts.map((completionCount, i) => {
                     const day = i + 1;
-                    const completionCount = habits.filter(h => checked[h.id]?.[day]).length;
                     const maxPossible = habits.length || 1;
                     const opacity = completionCount / maxPossible;
                     return (
@@ -169,11 +186,11 @@ export default function InsightsPage() {
                  <div className="flex items-center justify-between">
                     <div>
                        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-1">Peak Performance Day</div>
-                       <div className="text-xl font-black text-[#10b981]">DAY 14</div>
+                       <div className="text-xl font-black text-[#10b981]">{peakPerformanceText}</div>
                     </div>
                     <div className="text-right">
                        <div className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-1">System Entropy</div>
-                       <div className="text-xl font-black text-[#3b82f6]">LOW</div>
+                       <div className="text-xl font-black text-[#3b82f6]">{entropy}</div>
                     </div>
                  </div>
               </div>
