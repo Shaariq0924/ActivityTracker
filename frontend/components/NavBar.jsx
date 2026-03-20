@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Feedback from './Feedback';
 
 const NAV_LINKS = [
-  { href: '/', label: 'Home', icon: 'fa-th-large', color: '#3b82f6' },
+  { href: '/home', label: 'Home', icon: 'fa-th-large', color: '#3b82f6' },
   { href: '/flow', label: 'Flow', icon: 'fa-wind', color: '#3b82f6' },
   { href: '/targets', label: 'Targets', icon: 'fa-bullseye', color: '#3b82f6' },
   { href: '/insights', label: 'Insights', icon: 'fa-chart-bar', color: '#3b82f6' },

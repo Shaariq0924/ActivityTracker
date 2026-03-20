@@ -23,16 +23,17 @@ export default function FocusPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { theme, mounted } = useTheme();
-  const isDark = theme === 'dark';
   
   const [seconds, setSeconds] = useState(25 * 60);
   const [isActive, setIsActive] = useState(false);
   const [sessionTime, setSessionTime] = useState(25);
+  const [endTime, setEndTime] = useState(null);
   const [stats, setStats] = useState({ todaySessions: 0, totalMinutes: 0 });
   const [currentSound, setCurrentSound] = useState(null);
   const [volume, setVolume] = useState(0.5);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
 
-  const timerRef = useRef(null);
   const audioRef = useRef(null);
 
   useEffect(() => {
@@ -47,15 +48,35 @@ export default function FocusPage() {
   }, []);
 
   useEffect(() => {
-    if (isActive && seconds > 0) {
-      timerRef.current = setInterval(() => {
-        setSeconds(s => s - 1);
-      }, 1000);
-    } else if (seconds === 0 && isActive) {
+    let interval = null;
+    if (isActive && endTime) {
+      interval = setInterval(() => {
+        const remaining = Math.round((endTime - Date.now()) / 1000);
+        if (remaining <= 0) {
+          setSeconds(0);
+        } else {
+          setSeconds(remaining);
+        }
+      }, 500);
+    }
+    return () => clearInterval(interval);
+  }, [isActive, endTime]);
+
+  useEffect(() => {
+    if (seconds === 0 && isActive && endTime) {
       handleComplete();
     }
-    return () => clearInterval(timerRef.current);
-  }, [isActive, seconds]);
+  }, [seconds, isActive, endTime]);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.play().catch(e => console.error('Audio playback failed', e));
+      } else {
+        audioRef.current.pause();
+      }
+    }
+  }, [isPlaying, currentSound]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -66,27 +87,30 @@ export default function FocusPage() {
   const toggleSound = (sound) => {
     if (currentSound?.id === sound.id) {
       setCurrentSound(null);
+      setIsPlaying(false);
     } else {
       setCurrentSound(sound);
+      setIsPlaying(true);
     }
   };
 
   const handleComplete = () => {
     setIsActive(false);
-    clearInterval(timerRef.current);
+    setEndTime(null);
     const newStats = {
       todaySessions: stats.todaySessions + 1,
       totalMinutes: stats.totalMinutes + sessionTime
     };
     setStats(newStats);
     localStorage.setItem('at-focus-stats', JSON.stringify(newStats));
-    alert('Focus Session Complete! Commencing break protocol.');
+    setShowCelebration(true);
   };
 
   const startTimer = (mins) => {
     setIsActive(false);
     setSessionTime(mins);
     setSeconds(mins * 60);
+    setEndTime(Date.now() + mins * 60000);
     setIsActive(true);
   };
 
@@ -95,8 +119,6 @@ export default function FocusPage() {
     const sec = s % 60;
     return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
   };
-
-  const isAuthLoading = status === 'loading';
 
   const progress = (seconds / (sessionTime * 60));
   const dashOffset = 2 * Math.PI * 140 * progress;
@@ -167,35 +189,53 @@ export default function FocusPage() {
            </div>
 
            {/* Audio Hub */}
-           <div className="mb-12 glass rounded-[2rem] p-4 border border-[var(--border-color)] flex items-center gap-6">
-              <div className="flex gap-2">
-                 {AMBIENT_SOUNDS.map(s => (
-                   <button 
-                     key={s.id} 
-                     onClick={() => toggleSound(s)}
-                     className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${currentSound?.id === s.id ? 'bg-[#3b82f6] text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'hover:bg-[var(--surface-layer)] text-[var(--text-muted)]'}`}
-                   >
-                     <i className={`fas ${s.icon} text-lg`} />
-                   </button>
-                 ))}
+           <div className="mb-12 glass rounded-[2rem] p-4 md:px-6 border border-[var(--border-color)] w-full flex flex-wrap justify-center items-center gap-4 lg:gap-6 transition-all">
+              <div className="flex flex-wrap justify-center items-center gap-4">
+                 <div className="flex gap-2 shrink-0">
+                    {AMBIENT_SOUNDS.map(s => (
+                      <button 
+                        key={s.id} 
+                        onClick={() => toggleSound(s)}
+                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${currentSound?.id === s.id ? 'bg-[#3b82f6] text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'hover:bg-[var(--surface-layer)] text-[var(--text-muted)]'}`}
+                      >
+                        <i className={`fas ${s.icon} text-lg`} />
+                      </button>
+                    ))}
+                 </div>
+                 <div className="hidden sm:block h-8 w-[1px] bg-[var(--border-color)] shrink-0" />
+                 <div className="flex items-center gap-3 shrink-0">
+                    <i className="fas fa-volume-low text-[var(--text-muted)] text-xs" />
+                    <input 
+                      type="range" min="0" max="1" step="0.01" 
+                      value={volume} onChange={e => setVolume(parseFloat(e.target.value))}
+                      className="w-20 md:w-24 accent-[#3b82f6] bg-[var(--surface-layer)] h-1 rounded-full appearance-none cursor-pointer"
+                    />
+                    <i className="fas fa-volume-high text-[var(--text-muted)] text-xs" />
+                 </div>
               </div>
-              <div className="h-8 w-[1px] bg-[var(--border-color)]" />
-              <div className="flex items-center gap-4">
-                 <i className="fas fa-volume-low text-[var(--text-muted)] text-xs" />
-                 <input 
-                   type="range" min="0" max="1" step="0.01" 
-                   value={volume} onChange={e => setVolume(parseFloat(e.target.value))}
-                   className="w-24 accent-[#3b82f6] bg-[var(--surface-layer)] h-1 rounded-full appearance-none cursor-pointer"
-                 />
-                 <i className="fas fa-volume-high text-[var(--text-muted)] text-xs" />
-              </div>
+
               {currentSound && (
-                <div className="pr-4">
-                   <p className="text-[9px] font-black uppercase tracking-widest text-[#3b82f6] animate-pulse">Syncing: {currentSound.label}</p>
-                </div>
+                <>
+                  <div className="flex items-center justify-center gap-3 w-full sm:w-auto border-t lg:border-t-0 lg:border-l border-[var(--border-color)] pt-3 lg:pt-0 lg:pl-6 shrink-0 transition-all">
+                     <button 
+                       onClick={() => setIsPlaying(!isPlaying)}
+                       className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPlaying ? 'bg-[#10b98120] text-[#10b981] shadow-[0_0_10px_rgba(16,185,129,0.3)]' : 'bg-[var(--surface-layer)] text-[var(--text-primary)] hover:bg-[#3b82f620] hover:text-[#3b82f6]'}`}
+                     >
+                       <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-sm ml-0.5`} />
+                     </button>
+                     <div className="text-left">
+                       <p className={`text-[10px] font-black uppercase tracking-widest ${isPlaying ? 'text-[#3b82f6] animate-pulse' : 'text-[var(--text-muted)]'}`}>
+                         {isPlaying ? 'Playing:' : 'Paused:'}
+                       </p>
+                       <p className="text-[11px] font-bold text-[var(--text-primary)] truncate max-w-[120px]">
+                         {currentSound.label}
+                       </p>
+                     </div>
+                  </div>
+                </>
               )}
               {currentSound && (
-                <audio ref={audioRef} src={currentSound.url} autoPlay loop />
+                <audio ref={audioRef} src={currentSound.url} loop />
               )}
            </div>
 
@@ -215,13 +255,21 @@ export default function FocusPage() {
 
            <div className="flex gap-4">
               <button 
-                onClick={() => setIsActive(!isActive)}
+                onClick={() => {
+                  if (isActive) {
+                    setIsActive(false);
+                    setEndTime(null);
+                  } else {
+                    setEndTime(Date.now() + seconds * 1000);
+                    setIsActive(true);
+                  }
+                }}
                 className={`px-10 py-5 rounded-3xl font-black text-sm transition-all shadow-2xl ${isActive ? 'bg-[var(--surface-layer)] text-[var(--text-primary)] border border-[var(--border-color)]' : 'bg-[#3b82f6] text-white hover:scale-105 active:scale-95'}`}
               >
                  {isActive ? 'SUSPEND SESSION' : 'ENGAGE FOCUS'}
               </button>
               <button 
-                onClick={() => { setIsActive(false); setSeconds(sessionTime * 60); }}
+                onClick={() => { setIsActive(false); setEndTime(null); setSeconds(sessionTime * 60); }}
                 className="px-6 py-5 rounded-3xl glass border border-[var(--border-color)] text-[var(--text-muted)] hover:text-[#ef4444] transition-all"
               >
                  <i className="fas fa-redo-alt" />
@@ -244,6 +292,54 @@ export default function FocusPage() {
         </div>
       </main>
 
+      {/* Celebration Overlay */}
+      <AnimatePresence>
+        {showCelebration && (
+          <motion.div 
+             initial={{ opacity: 0 }} 
+             animate={{ opacity: 1 }} 
+             exit={{ opacity: 0 }} 
+             className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
+          >
+             <motion.div 
+                initial={{ scale: 0.8, y: 50 }} 
+                animate={{ scale: 1, y: 0 }} 
+                exit={{ scale: 0.8, opacity: 0 }}
+                className="glass p-10 rounded-[3rem] border border-[#10b981] text-center max-w-sm w-full shadow-[0_0_50px_rgba(16,185,129,0.2)] overflow-hidden relative"
+             >
+                {/* Ferrari Effect */}
+                <motion.div 
+                   className="absolute top-1/4 -translate-y-1/2 text-[120px] z-0 opacity-30 blur-[1px]"
+                   initial={{ x: '-150vw', skewX: -30 }}
+                   animate={{ x: '150vw' }}
+                   transition={{ duration: 0.8, ease: "easeIn", delay: 0.1 }}
+                >
+                   🏎️💨
+                </motion.div>
+                
+                <div className="relative z-10">
+                   <motion.div 
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: "spring", stiffness: 200, delay: 0.3 }}
+                      className="w-24 h-24 mx-auto bg-[#10b98120] rounded-full flex items-center justify-center mb-6 border border-[#10b981]"
+                   >
+                      <i className="fas fa-trophy text-4xl text-[#10b981]" />
+                   </motion.div>
+                   <h2 className="text-3xl font-black mb-2 text-white">Focus Secured.</h2>
+                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#10b981] mb-10">Mission Accomplished</p>
+                   
+                   <button 
+                     onClick={() => setShowCelebration(false)}
+                     className="w-full py-4 rounded-2xl bg-gradient-to-r from-[#10b981] to-[#059669] text-white text-xs font-black uppercase tracking-widest shadow-[0_10px_30px_rgba(16,185,129,0.4)] hover:scale-105 active:scale-95 transition-all"
+                   >
+                     Continue Protocol
+                   </button>
+                </div>
+             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
