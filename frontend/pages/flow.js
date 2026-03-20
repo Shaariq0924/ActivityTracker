@@ -102,14 +102,44 @@ export default function FlowPage() {
       const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), (docSnap) => {
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.habits) setHabits(data.habits);
-          if (data.checked) setChecked(data.checked);
-          if (data.tasks) setTasks(data.tasks);
-          if (data.journal) setEntries(data.journal);
-          if (data.eduNotes) setEduNotes(data.eduNotes);
+          let rescued = false;
+          let recH = data.habits || [];
+          let recC = data.checked || {};
+          let recT = data.tasks || [];
+          let recJ = data.journal || [];
+          let recE = data.eduNotes || [];
+
+          // EMERGENCY RECOVERY PROTOCOL: If Cloud is wiped but Local Drive has locked data
+          if (recH.length === 0 && recT.length === 0) {
+            try {
+              const lh = localStorage.getItem('at-habits'); if (lh && JSON.parse(lh).length > 0) { recH = JSON.parse(lh); rescued = true; }
+              const lc = localStorage.getItem('at-checked'); if (lc) { recC = JSON.parse(lc); rescued = true; }
+              const lt = localStorage.getItem('at-tasks'); if (lt && JSON.parse(lt).length > 0) { recT = JSON.parse(lt); rescued = true; }
+              const lj = localStorage.getItem('at-journal'); if (lj && JSON.parse(lj).length > 0) { recJ = JSON.parse(lj); rescued = true; }
+              const le = localStorage.getItem('at-edu-notes'); if (le && JSON.parse(le).length > 0) { recE = JSON.parse(le); rescued = true; }
+            } catch (err) {}
+          }
+
+          setHabits(recH);
+          setChecked(recC);
+          setTasks(recT);
+          setEntries(recJ);
+          setEduNotes(recE);
+
+          if (rescued) {
+             syncToCloud({ habits: recH, checked: recC, tasks: recT, journal: recJ, eduNotes: recE });
+          }
         } else {
-           // Initial template initialization
-           syncToCloud({ habits, checked, tasks, journal: entries, eduNotes });
+           let rH = habits, rC = checked, rT = tasks, rJ = entries, rE = eduNotes;
+           try {
+             const h = localStorage.getItem('at-habits'); if (h) rH = JSON.parse(h);
+             const c = localStorage.getItem('at-checked'); if (c) rC = JSON.parse(c);
+             const t = localStorage.getItem('at-tasks'); if (t) rT = JSON.parse(t);
+             const j = localStorage.getItem('at-journal'); if (j) rJ = JSON.parse(j);
+             const e = localStorage.getItem('at-edu-notes'); if (e) rE = JSON.parse(e);
+           } catch(e) {}
+           setHabits(rH); setChecked(rC); setTasks(rT); setEntries(rJ); setEduNotes(rE);
+           syncToCloud({ habits: rH, checked: rC, tasks: rT, journal: rJ, eduNotes: rE });
         }
       });
       return () => unsub(); // Teardown observer
