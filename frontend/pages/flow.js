@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NavBar from '@/components/NavBar';
 import { useTheme } from '@/pages/_app';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, onSnapshot } from 'firebase/firestore';
 
 // ─── HABITS DATA ─────────────────────────────────────────────────────────────
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -88,30 +90,45 @@ export default function FlowPage() {
     if (status === 'unauthenticated') router.push('/portal');
   }, [status, router]);
 
+  const syncToCloud = async (payload) => {
+    if (session?.user?.email) {
+      try { await setDoc(doc(db, 'trackerSync', session.user.email), payload, { merge: true }); }
+      catch (err) { console.error('Cloud Update Failed:', err); }
+    }
+  };
+
   useEffect(() => {
-    try {
-      const h = localStorage.getItem('at-habits'); if (h) setHabits(JSON.parse(h));
-      const c = localStorage.getItem('at-checked'); if (c) setChecked(JSON.parse(c));
-      const t = localStorage.getItem('at-tasks');   if (t) setTasks(JSON.parse(t));
-      const j = localStorage.getItem('at-journal'); if (j) setEntries(JSON.parse(j));
-      const en = localStorage.getItem('at-edu-notes'); if (en) setEduNotes(JSON.parse(en));
-    } catch {}
-  }, []);
+    if (status === 'authenticated' && session?.user?.email) {
+      const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.habits) setHabits(data.habits);
+          if (data.checked) setChecked(data.checked);
+          if (data.tasks) setTasks(data.tasks);
+          if (data.journal) setEntries(data.journal);
+          if (data.eduNotes) setEduNotes(data.eduNotes);
+        } else {
+           // Initial template initialization
+           syncToCloud({ habits, checked, tasks, journal: entries, eduNotes });
+        }
+      });
+      return () => unsub(); // Teardown observer
+    }
+  }, [session, status]);
 
   const saveHabits = (h, c) => {
     setHabits(h); setChecked(c);
-    localStorage.setItem('at-habits', JSON.stringify(h));
-    localStorage.setItem('at-checked', JSON.stringify(c));
+    syncToCloud({ habits: h, checked: c });
   };
-  const saveTasks = (d) => { setTasks(d); localStorage.setItem('at-tasks', JSON.stringify(d)); };
-  const saveEntries = (d) => { setEntries(d); localStorage.setItem('at-journal', JSON.stringify(d)); };
+  const saveTasks = (d) => { setTasks(d); syncToCloud({ tasks: d }); };
+  const saveEntries = (d) => { setEntries(d); syncToCloud({ journal: d }); };
 
   const addHabit = () => {
     if (!newHabit.trim()) return;
     const h = { id: Date.now(), name: newHabit, emoji: selectedEmoji, color: '#3b82f6', goal: 31, priority: 'Medium', logs: {} };
     const updated = [...habits, h];
     setHabits(updated);
-    localStorage.setItem('at-habits', JSON.stringify(updated));
+    syncToCloud({ habits: updated });
     setNewHabit('');
     setShowAddHabit(false);
   };
@@ -158,13 +175,13 @@ export default function FlowPage() {
     const n = { id: Date.now(), text: newNote, goalLink: noteGoal, date: todayStr };
     const updated = [n, ...eduNotes];
     setEduNotes(updated);
-    localStorage.setItem('at-edu-notes', JSON.stringify(updated));
+    syncToCloud({ eduNotes: updated });
     setNewNote(''); setNoteGoal('');
   };
   const deleteEduNote = (id) => {
     const updated = eduNotes.filter(n => n.id !== id);
     setEduNotes(updated);
-    localStorage.setItem('at-edu-notes', JSON.stringify(updated));
+    syncToCloud({ eduNotes: updated });
   };
 
   const completedToday = habits.filter(h => checked[h.id]?.[`${currentYear}-${currentMonth}`]?.[currentDay]).length;
@@ -175,11 +192,13 @@ export default function FlowPage() {
   const todayStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 
   return (
-    <div className="min-h-screen selection:bg-[#3b82f620]" style={{ background: 'var(--background-main)', fontFamily: 'Montserrat, sans-serif' }}>
+    <>
       <Head><title>Daily Workflow — Activity Tracker</title></Head>
-      <NavBar session={session} active="/flow" />
+      <div suppressHydrationWarning className="min-h-screen selection:bg-[#3b82f620]" style={{ background: 'var(--background-main)', fontFamily: 'Montserrat, sans-serif' }}>
+        <NavBar session={session} active="/flow" />
 
-      {/* Header — Centered */}
+        {/* Header — Centered */}
+
       <div className="max-w-7xl mx-auto px-6 pt-12 pb-8">
         <motion.div 
           initial={{ opacity: 0, y: 10 }}
@@ -258,7 +277,13 @@ export default function FlowPage() {
                {/* Global Month Progress */}
                {(() => {
                   const total = habits.reduce((s, h) => s + (h.goal || daysInMonth), 0);
-                  const done  = habits.reduce((s, h) => s + Math.min(Object.values((checked[h.id] || {})[monthKey] || {}).filter(Boolean).length, h.goal || daysInMonth), 0);
+                  const done  = habits.reduce((s, h) => {
+                    let count = 0;
+                    for (let d = 1; d <= daysInMonth; d++) {
+                      if (((checked[h.id] || {})[monthKey]?.[d]) || checked[h.id]?.[d] === true) count++;
+                    }
+                    return s + Math.min(count, h.goal || daysInMonth);
+                  }, 0);
                   const pct   = total ? Math.round((done / total) * 100) : 0;
                   return (
                     <div className="flex-1 glass rounded-xl px-5 py-2 flex items-center justify-between border border-[var(--glass-border-color)]">
@@ -325,7 +350,8 @@ export default function FlowPage() {
                            </td>
                            {Array.from({ length: daysInMonth }).map((_, i) => {
                               const day = i + 1;
-                              const isChecked = (checked[h.id] || {})[monthKey]?.[day];
+                              const legacyData = checked[h.id]?.[day] === true;
+                              const isChecked = ((checked[h.id] || {})[monthKey]?.[day]) || legacyData;
                               const isClickable = day === currentDay && habitMonth === currentMonth;
                               return (
                                 <td key={i} className="p-1">
@@ -333,6 +359,7 @@ export default function FlowPage() {
                                       onClick={() => {
                                         if (!isClickable) return;
                                         const habitData = checked[h.id] || {};
+                                        // Migrate legacy data if present for this day
                                         const monthData = habitData[monthKey] || {};
                                         const updated = { 
                                           ...checked, 
@@ -342,7 +369,7 @@ export default function FlowPage() {
                                           } 
                                         };
                                         setChecked(updated);
-                                        localStorage.setItem('at-checked', JSON.stringify(updated));
+                                        syncToCloud({ checked: updated });
                                       }}
                                       className={`w-6 h-6 rounded-[7px] transition-all relative flex items-center justify-center group/btn ${!isClickable ? 'cursor-not-allowed opacity-50' : ''}`}
                                       style={{ 
@@ -612,5 +639,6 @@ export default function FlowPage() {
       </AnimatePresence>
 
     </div>
+    </>
   );
 }

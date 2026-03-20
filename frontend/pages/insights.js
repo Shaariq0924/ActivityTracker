@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import NavBar from '@/components/NavBar';
 import { useTheme } from '@/pages/_app';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -34,12 +36,18 @@ export default function InsightsPage() {
   }, [status, router]);
 
   useEffect(() => {
-    try {
-      const t = localStorage.getItem('at-tasks'); if (t) setTasks(JSON.parse(t));
-      const h = localStorage.getItem('at-habits'); if (h) setHabits(JSON.parse(h));
-      const c = localStorage.getItem('at-checked'); if (c) setChecked(JSON.parse(c));
-    } catch {}
-  }, []);
+    if (status === 'authenticated' && session?.user?.email) {
+      const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.habits) setHabits(data.habits);
+          if (data.checked) setChecked(data.checked);
+          if (data.tasks) setTasks(data.tasks);
+        }
+      });
+      return () => unsub(); // Teardown observer
+    }
+  }, [session, status]);
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth();
@@ -52,8 +60,10 @@ export default function InsightsPage() {
   const taskPct = totalTasks ? Math.round((doneTasks / totalTasks) * 100) : 0;
 
   const habitStats = habits.map(h => {
-    const monthData = (checked[h.id] || {})[monthKey] || {};
-    const d = Object.values(monthData).filter(Boolean).length;
+    let d = 0;
+    for (let day = 1; day <= daysInMonth; day++) {
+      if (((checked[h.id] || {})[monthKey]?.[day]) || checked[h.id]?.[day] === true) d++;
+    }
     const g = h.goal || daysInMonth;
     return { ...h, done: d, goal: g, pct: Math.min(Math.round((d / g) * 100), 100) };
   });
@@ -64,7 +74,7 @@ export default function InsightsPage() {
   let maxCount = 0;
   const dayCounts = Array.from({ length: daysInMonth }).map((_, i) => {
     const day = i + 1;
-    const count = habits.filter(h => (checked[h.id] || {})[monthKey]?.[day]).length;
+    const count = habits.filter(h => ((checked[h.id] || {})[monthKey]?.[day]) || checked[h.id]?.[day] === true).length;
     if (count > maxCount) { maxCount = count; peakDay = day; }
     return count;
   });
@@ -74,11 +84,12 @@ export default function InsightsPage() {
   const isAuthLoading = status === 'loading';
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden" style={{ background: 'var(--bg)' }}>
+    <>
       <Head><title>Analytics Interface — Activity Tracker</title></Head>
-      <NavBar session={session} active="/insights" />
+      <div suppressHydrationWarning className="min-h-screen relative overflow-x-hidden" style={{ background: 'var(--bg)' }}>
+        <NavBar session={session} active="/insights" />
 
-      {/* Background Decorative Element */}
+        {/* Background Decorative Element */}
       <div className="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none" style={{ opacity: isDark ? 0.05 : 0.08 }}>
          <div className="absolute top-[10%] right-[5%] w-[500px] h-[500px] bg-[#3b82f6] rounded-full blur-[120px]" />
          <div className="absolute bottom-[20%] left-[10%] w-[400px] h-[400px] bg-[#3b82f6] rounded-full blur-[100px]" />
@@ -197,7 +208,7 @@ export default function InsightsPage() {
            </motion.section>
         </div>
       </main>
-
     </div>
+    </>
   );
 }

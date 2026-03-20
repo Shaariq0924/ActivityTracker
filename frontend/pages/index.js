@@ -5,6 +5,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import NavBar from '@/components/NavBar';
+import Feedback from '@/components/Feedback';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { useTheme } from '@/pages/_app';
 
 const NAVIGATION_CARDS = [
@@ -80,19 +83,27 @@ export default function Home() {
   const [habits, setHabits] = useState([]);
   const [goals, setGoals] = useState([]);
   const [entries, setEntries] = useState([]);
+  const [checked, setChecked] = useState({}); // Added new state for 'checked'
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/portal');
   }, [status, router]);
 
   useEffect(() => {
-    try {
-      const t = localStorage.getItem('at-tasks'); if (t) setTasks(JSON.parse(t));
-      const h = localStorage.getItem('at-habits'); if (h) setHabits(JSON.parse(h));
-      const g = localStorage.getItem('at-goals'); if (g) setGoals(JSON.parse(g));
-      const j = localStorage.getItem('at-journal'); if (j) setEntries(JSON.parse(j));
-    } catch { }
-  }, []);
+    if (status === 'authenticated' && session?.user?.email) {
+      const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.habits) setHabits(data.habits);
+          if (data.checked) setChecked(data.checked);
+          if (data.tasks) setTasks(data.tasks);
+          if (data.goals) setGoals(data.goals);
+          if (data.journal) setEntries(data.journal);
+        }
+      });
+      return () => unsub(); // Teardown observer
+    }
+  }, [session, status]);
 
   const completedTasks = tasks.filter(t => t.status === 'Completed').length;
   const taskProgress = tasks.length > 0 ? (completedTasks / tasks.length) * 100 : 0;
@@ -108,9 +119,9 @@ export default function Home() {
   const isAuthLoading = status === 'loading';
 
   return (
-    <div className="min-h-screen relative overflow-x-hidden selection:bg-[#3b82f620]" style={{ background: 'var(--background-main)' }}>
+    <div suppressHydrationWarning className="min-h-screen relative overflow-x-hidden selection:bg-[#3b82f620]" style={{ background: 'var(--background-main)' }}>
       <Head>
-        <title>Dashboard — Activity Tracker</title>
+        <title>Home — Activity Tracker</title>
       </Head>
       <NavBar session={session} active="/" />
 
@@ -194,7 +205,7 @@ export default function Home() {
                 )}
               </h1>
               <p className="text-lg font-medium text-[var(--text-muted)] max-w-lg mt-2">
-                {isAuthLoading ? 'Syncing system metrics...' : 'Your performance dashboard is ready. Track habits, manage tasks, and optimize focus.'}
+                {isAuthLoading ? 'Syncing system metrics...' : 'Your performance home is ready. Track habits, manage tasks, and optimize focus.'}
               </p>
             </div>
 

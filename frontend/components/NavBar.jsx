@@ -3,9 +3,10 @@ import { signOut } from 'next-auth/react';
 import { useTheme } from '@/pages/_app';
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Feedback from './Feedback';
 
 const NAV_LINKS = [
-  { href: '/', label: 'Dashboard', icon: 'fa-th-large', color: '#3b82f6' },
+  { href: '/', label: 'Home', icon: 'fa-th-large', color: '#3b82f6' },
   { href: '/flow', label: 'Flow', icon: 'fa-wind', color: '#3b82f6' },
   { href: '/targets', label: 'Targets', icon: 'fa-bullseye', color: '#3b82f6' },
   { href: '/insights', label: 'Insights', icon: 'fa-chart-bar', color: '#3b82f6' },
@@ -15,6 +16,7 @@ const NAV_LINKS = [
 export default function NavBar({ session, active = '/' }) {
   const { theme, mounted, toggle } = useTheme();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
   const isDark = mounted ? theme === 'dark' : true;
 
   // Close menu on resize to desktop
@@ -93,6 +95,13 @@ export default function NavBar({ session, active = '/' }) {
               </button>
             </div>
 
+            {/* Feedback toggle */}
+            <button onClick={() => setIsFeedbackOpen(true)}
+              className="w-9 h-9 rounded-2xl flex items-center justify-center border transition-all duration-300 hover:scale-105 active:scale-95 glass hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]"
+              style={{ borderColor: 'rgba(255,255,255,0.1)', color: '#10b981' }}>
+              <i className="fas fa-comment-dots text-xs" />
+            </button>
+
             {/* Theme toggle */}
             <button onClick={toggle}
               className="w-9 h-9 rounded-2xl flex items-center justify-center border transition-all duration-300 hover:scale-105 active:scale-95 glass hover:shadow-[0_0_15px_rgba(59,130,246,0.2)]"
@@ -116,6 +125,8 @@ export default function NavBar({ session, active = '/' }) {
           </div>
         </nav>
       </div>
+
+      <Feedback isOpen={isFeedbackOpen} onClose={() => setIsFeedbackOpen(false)} />
 
       {/* Mobile Menu Overlay */}
       <AnimatePresence>
