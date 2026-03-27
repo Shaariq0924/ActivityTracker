@@ -8,7 +8,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { name, username, password } = req.body;
+    const { name, username, password, image } = req.body;
 
     if (!name || !username || !password) {
       return res.status(400).json({ message: 'Missing required fields' });
@@ -31,6 +31,7 @@ export default async function handler(req, res) {
       name,
       username: username.toLowerCase(),
       password: hashedPassword,
+      image: image || null,
       createdAt: new Date().toISOString(),
     });
 

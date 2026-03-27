@@ -86,8 +86,12 @@ export default function NavBar({ session, active = '/' }) {
             {/* Desktop Account Icon (Simulated) */}
             <div className="hidden lg:flex items-center gap-3 px-3 py-1.5 rounded-xl border transition-colors group-hover/nav:border-white/10"
                  style={{ background: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)', borderColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.08)' }}>
-              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-[#3b82f6] to-[#60a5fa] flex items-center justify-center text-[8px] font-black text-white">
-                {session?.user?.name?.charAt(0) || 'S'}
+              <div className="w-5 h-5 rounded-full overflow-hidden flex items-center justify-center text-[8px] font-black text-white bg-gradient-to-tr from-[#3b82f6] to-[#60a5fa]">
+                {session?.user?.image ? (
+                  <img src={session.user.image} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  session?.user?.name?.charAt(0) || 'U'
+                )}
               </div>
               <div className="w-[1px] h-3" style={{ backgroundColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }} />
               <button onClick={() => signOut()} className="text-[8px] font-black text-[var(--text-muted)] hover:text-red-400 transition-colors uppercase tracking-widest">
@@ -176,9 +180,13 @@ export default function NavBar({ session, active = '/' }) {
             <div className="mt-auto mb-10 space-y-4">
               <div className="p-4 rounded-2xl glass border border-[var(--border-color)] flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-[var(--surface-layer)] flex items-center justify-center font-black text-xs border border-[var(--border-color)]">
-                    {session?.user?.name?.charAt(0) || 'U'}
-                  </div>
+                <div className="w-10 h-10 rounded-full bg-[var(--surface-layer)] overflow-hidden flex items-center justify-center font-black text-xs border border-[var(--border-color)]">
+                  {session?.user?.image ? (
+                    <img src={session.user.image} alt="Profile" className="w-full h-full object-cover" />
+                  ) : (
+                    session?.user?.name?.charAt(0) || 'U'
+                  )}
+                </div>
                   <div>
                     <div className="text-xs font-black" style={{ color: 'var(--text-primary)' }}>{session?.user?.name || 'User Account'}</div>
                     <div className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest">Active Session</div>

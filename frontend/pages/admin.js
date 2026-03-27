@@ -166,8 +166,12 @@ export default function AdminDashboard() {
                           <motion.tr initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: idx * 0.05 }} key={u.id} className="border-b border-[var(--border-color)]/50 hover:bg-[var(--surface-layer)] transition-colors">
                             <td className="p-6">
                               <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 bg-[var(--surface-layer)] rounded-xl border border-[var(--border-color)] flex items-center justify-center font-black text-[#8b5cf6]">
-                                  {u.name?.charAt(0) || 'U'}
+                                <div className="w-10 h-10 bg-[var(--surface-layer)] rounded-xl border border-[var(--border-color)] overflow-hidden flex items-center justify-center font-black text-[#8b5cf6]">
+                                  {u.image ? (
+                                    <img src={u.image} alt="Avatar" className="w-full h-full object-cover" />
+                                  ) : (
+                                    u.name?.charAt(0) || 'U'
+                                  )}
                                 </div>
                                 <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{u.name || 'Unknown Agent'}</span>
                               </div>

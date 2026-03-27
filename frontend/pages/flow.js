@@ -1,12 +1,13 @@
 import Head from 'next/head';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NavBar from '@/components/NavBar';
 import { useTheme } from '@/pages/_app';
 import { db } from '@/lib/firebase';
 import { doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { generateStrategicRoadmap } from '@/lib/ai/strategist';
 
 // ─── HABITS DATA ─────────────────────────────────────────────────────────────
 const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -50,10 +51,10 @@ export default function FlowPage() {
   const [newHabit, setNewHabit] = useState('');
   const [selectedEmoji, setSelectedEmoji] = useState('⭐');
   const [showAddHabit, setShowAddHabit] = useState(false);
-  const [habitMonth, setHabitMonth] = useState(new Date().getMonth());
   const currentDay = new Date().getDate();
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
+  const [habitMonth, setHabitMonth] = useState(currentMonth);
   const daysInMonth = getDaysInMonth(habitMonth, currentYear);
   const monthKey = `${currentYear}-${habitMonth}`;
 
@@ -74,14 +75,28 @@ export default function FlowPage() {
   const [eduNotes, setEduNotes] = useState([]);
   const [newNote, setNewNote] = useState('');
   const [noteGoal, setNoteGoal] = useState('');
+  const [roadmap, setRoadmap] = useState(null);
+  const tableContainerRef = useRef(null);
+  const todayRef = useRef(null);
 
   const getStreak = (habitId) => {
     let streak = 0;
-    const currentMonthKey = `${currentYear}-${currentMonth}`;
-    const habitChecked = (checked[habitId] || {})[currentMonthKey] || {};
-    for (let i = currentDay; i >= 1; i--) {
-      if (habitChecked[i]) streak++;
-      else if (i < currentDay) break;
+    const habitChecked = checked[habitId] || {};
+    const today = new Date();
+    
+    // Check backwards from today
+    for (let i = 0; i < 365; i++) {
+      const d = new Date();
+      d.setDate(today.getDate() - i);
+      const mKey = `${d.getFullYear()}-${d.getMonth()}`;
+      const day = d.getDate();
+      
+      if (habitChecked[mKey]?.[day]) {
+        streak++;
+      } else if (i > 0 || (d.getDate() === today.getDate() && d.getMonth() === today.getMonth())) {
+        // If not today (or if today is not checked), break streak
+        if (i > 0) break;
+      }
     }
     return streak;
   };
@@ -89,6 +104,32 @@ export default function FlowPage() {
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/portal');
   }, [status, router]);
+
+  useEffect(() => {
+    if (habits.length > 0 || tasks.length > 0) {
+      setRoadmap(generateStrategicRoadmap({ habits, tasks, checked, entries }));
+    }
+  }, [habits, tasks, checked, entries]);
+
+  // INSTANT HYDRATION: Pull from Local Disk before Cloud resolves
+  useEffect(() => {
+    try {
+      const h = localStorage.getItem('at-habits'); if (h) setHabits(JSON.parse(h));
+      const c = localStorage.getItem('at-checked'); if (c) setChecked(JSON.parse(c));
+      const t = localStorage.getItem('at-tasks');   if (t) setTasks(JSON.parse(t));
+      const j = localStorage.getItem('at-journal'); if (j) setEntries(JSON.parse(j));
+      const en = localStorage.getItem('at-edu-notes'); if (en) setEduNotes(JSON.parse(en));
+    } catch (e) { console.error('Local Hydration Failure:', e); }
+  }, []);
+
+  // AUTO-SCROLL TO TODAY
+  useEffect(() => {
+    if (tab === 'Habits' && todayRef.current && tableContainerRef.current) {
+      setTimeout(() => {
+        todayRef.current.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+      }, 500);
+    }
+  }, [tab, habitMonth]);
 
   const syncToCloud = async (payload) => {
     if (session?.user?.email) {
@@ -99,7 +140,10 @@ export default function FlowPage() {
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.email) {
-      const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), (docSnap) => {
+      const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), { includeMetadataChanges: true }, (docSnap) => {
+        // Skip updates that were triggered by local optimistic changes, unless we need to rescue data
+        if (docSnap.metadata.hasPendingWrites) return;
+
         if (docSnap.exists()) {
           const data = docSnap.data();
           let rescued = false;
@@ -109,7 +153,7 @@ export default function FlowPage() {
           let recJ = data.journal || [];
           let recE = data.eduNotes || [];
 
-          // EMERGENCY RECOVERY PROTOCOL: If Cloud is wiped but Local Drive has locked data
+          // EMERGENCY RECOVERY PROTOCOL: Only rescue if BOTH cloud is empty AND we have local data
           if (recH.length === 0 && recT.length === 0) {
             try {
               const lh = localStorage.getItem('at-habits'); if (lh && JSON.parse(lh).length > 0) { recH = JSON.parse(lh); rescued = true; }
@@ -126,20 +170,29 @@ export default function FlowPage() {
           setEntries(recJ);
           setEduNotes(recE);
 
+          // Update local cache to match confirmed server state
+          localStorage.setItem('at-habits', JSON.stringify(recH));
+          localStorage.setItem('at-checked', JSON.stringify(recC));
+          localStorage.setItem('at-tasks', JSON.stringify(recT));
+          localStorage.setItem('at-journal', JSON.stringify(recJ));
+          localStorage.setItem('at-edu-notes', JSON.stringify(recE));
+
           if (rescued) {
              syncToCloud({ habits: recH, checked: recC, tasks: recT, journal: recJ, eduNotes: recE });
           }
         } else {
-           let rH = habits, rC = checked, rT = tasks, rJ = entries, rE = eduNotes;
-           try {
-             const h = localStorage.getItem('at-habits'); if (h) rH = JSON.parse(h);
-             const c = localStorage.getItem('at-checked'); if (c) rC = JSON.parse(c);
-             const t = localStorage.getItem('at-tasks'); if (t) rT = JSON.parse(t);
-             const j = localStorage.getItem('at-journal'); if (j) rJ = JSON.parse(j);
-             const e = localStorage.getItem('at-edu-notes'); if (e) rE = JSON.parse(e);
-           } catch(e) {}
-           setHabits(rH); setChecked(rC); setTasks(rT); setEntries(rJ); setEduNotes(rE);
-           syncToCloud({ habits: rH, checked: rC, tasks: rT, journal: rJ, eduNotes: rE });
+           // No cloud record found, initialize from local or keep current
+           const h = localStorage.getItem('at-habits'); 
+           if (h && JSON.parse(h).length > 0) {
+              const rH = JSON.parse(h);
+              const rC = JSON.parse(localStorage.getItem('at-checked') || '{}');
+              const rT = JSON.parse(localStorage.getItem('at-tasks') || '[]');
+              const rJ = JSON.parse(localStorage.getItem('at-journal') || '[]');
+              const rE = JSON.parse(localStorage.getItem('at-edu-notes') || '[]');
+              
+              setHabits(rH); setChecked(rC); setTasks(rT); setEntries(rJ); setEduNotes(rE);
+              syncToCloud({ habits: rH, checked: rC, tasks: rT, journal: rJ, eduNotes: rE });
+           }
         }
       });
       return () => unsub(); // Teardown observer
@@ -148,10 +201,20 @@ export default function FlowPage() {
 
   const saveHabits = (h, c) => {
     setHabits(h); setChecked(c);
+    localStorage.setItem('at-habits', JSON.stringify(h));
+    localStorage.setItem('at-checked', JSON.stringify(c));
     syncToCloud({ habits: h, checked: c });
   };
-  const saveTasks = (d) => { setTasks(d); syncToCloud({ tasks: d }); };
-  const saveEntries = (d) => { setEntries(d); syncToCloud({ journal: d }); };
+  const saveTasks = (d) => { 
+    setTasks(d); 
+    localStorage.setItem('at-tasks', JSON.stringify(d));
+    syncToCloud({ tasks: d }); 
+  };
+  const saveEntries = (d) => { 
+    setEntries(d); 
+    localStorage.setItem('at-journal', JSON.stringify(d));
+    syncToCloud({ journal: d }); 
+  };
 
   const addHabit = () => {
     if (!newHabit.trim()) return;
@@ -258,6 +321,61 @@ export default function FlowPage() {
           </div>
         </motion.div>
 
+        {/* AI STRATEGIC ROADMAP */}
+        {roadmap && (
+          <motion.div 
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-8 p-6 rounded-[2.5rem] glass border border-[#3b82f630] relative overflow-hidden group"
+          >
+             <div className="absolute top-0 right-0 p-8 opacity-[0.03] -rotate-12 translate-x-4">
+                <i className="fas fa-brain text-9xl" />
+             </div>
+             
+             <div className="flex flex-col md:flex-row gap-8 relative z-10">
+                <div className="flex-1">
+                   <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-[#3b82f620] flex items-center justify-center border border-[#3b82f630]">
+                         <i className="fas fa-sparkles text-[#3b82f6] text-[10px]" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#3b82f6]">AI Strategic Roadmap</span>
+                   </div>
+                   
+                   <p className="text-sm font-black text-[var(--text-primary)] leading-tight mb-2">
+                     {roadmap.reasoning || "Checking your focus rhythm... operational status stable."}
+                   </p>
+                   <div className="flex flex-wrap gap-2 mt-4">
+                      <div className="px-3 py-1 rounded-full bg-[var(--surface-layer)] border border-[var(--border-color)] text-[8px] font-black uppercase tracking-widest text-[var(--text-muted)]">
+                         {roadmap.energySuggestion}
+                      </div>
+                      <div className={`px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest ${roadmap.burnoutRisk.includes('Safe') ? 'text-[#10b981] border-[#10b98130] bg-[#10b98110]' : roadmap.burnoutRisk.includes('Warning') ? 'text-[#f59e0b] border-[#f59e0b30] bg-[#f59e0b10]' : 'text-[#ef4444] border-[#ef444430] bg-[#ef444410]'}`}>
+                         {roadmap.burnoutRisk}
+                      </div>
+                   </div>
+                </div>
+
+                <div className="w-px h-16 self-center hidden md:block" style={{ background: 'var(--border-color)', opacity: 0.3 }} />
+
+                <div className="flex flex-col justify-center min-w-[240px]">
+                   <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">AI Selected Objective</span>
+                   {roadmap.topAction ? (
+                      <div className="flex items-center gap-4 p-3 rounded-2xl bg-[#3b82f610] border border-[#3b82f630]">
+                         <div className="w-10 h-10 rounded-xl bg-[#3b82f6] flex items-center justify-center text-white shadow-[0_5px_15px_rgba(59,130,246,0.3)]">
+                            <i className="fas fa-arrow-right-long" />
+                         </div>
+                         <div className="flex-1 min-w-0">
+                            <p className="text-xs font-black truncate">{roadmap.topAction.title || roadmap.topAction.name}</p>
+                            <span className="text-[9px] font-black text-[#3b82f6] uppercase tracking-widest">Execute First</span>
+                         </div>
+                      </div>
+                   ) : (
+                      <p className="text-xs font-black text-[var(--text-muted)]">No critical objectives detected.</p>
+                   )}
+                </div>
+             </div>
+          </motion.div>
+        )}
+
         {/* Tab Selection */}
         <div className="flex gap-1 mt-10 p-1 rounded-2xl glass border border-[var(--border-color)] relative z-10 overflow-hidden">
           {WORKFLOW_TABS.map(t => (
@@ -306,18 +424,16 @@ export default function FlowPage() {
                
                {/* Global Month Progress */}
                {(() => {
-                  const total = habits.reduce((s, h) => s + (h.goal || daysInMonth), 0);
+                  const total = habits.reduce((s, h) => s + (h.goal || getDaysInMonth(habitMonth, currentYear)), 0);
                   const done  = habits.reduce((s, h) => {
-                    let count = 0;
-                    for (let d = 1; d <= daysInMonth; d++) {
-                      if (((checked[h.id] || {})[monthKey]?.[d]) || checked[h.id]?.[d] === true) count++;
-                    }
-                    return s + Math.min(count, h.goal || daysInMonth);
+                    const monthData = checked[h.id]?.[`${currentYear}-${habitMonth}`] || {};
+                    const checkedCount = Object.values(monthData).filter(Boolean).length;
+                    return s + Math.min(checkedCount, h.goal || getDaysInMonth(habitMonth, currentYear));
                   }, 0);
                   const pct   = total ? Math.round((done / total) * 100) : 0;
                   return (
                     <div className="flex-1 glass rounded-xl px-5 py-2 flex items-center justify-between border border-[var(--glass-border-color)]">
-                       <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">Monthly Completion Flow</span>
+                       <span className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)]">{MONTHS[habitMonth]} Completion Flow</span>
                        <div className="flex items-center gap-3">
                           <div className="w-32 h-1.5 rounded-full bg-[var(--surface-layer)] overflow-hidden">
                              <motion.div 
@@ -334,20 +450,23 @@ export default function FlowPage() {
             </div>
 
             {/* Grid */}
-            <div className="max-w-full overflow-x-auto rounded-3xl border border-[var(--border-color)] glass shadow-2xl no-scrollbar">
+            <div ref={tableContainerRef} className="max-w-full overflow-x-auto rounded-3xl border border-[var(--border-color)] glass shadow-2xl no-scrollbar">
                <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-[var(--border-color)]">
                       <th className="px-6 py-4 sticky left-0 z-20 glass backdrop-blur-xl border-r border-[var(--border-color)]">
                         <span className="text-[9px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">Identity</span>
                       </th>
-                      {Array.from({ length: daysInMonth }).map((_, i) => (
-                        <th key={i} className="px-1 text-center min-w-[38px]">
-                           <span className={`text-[10px] font-black ${i+1 === currentDay && habitMonth === currentMonth ? 'text-[#3b82f6]' : 'text-[var(--text-muted)]'}`}>
-                              {(i+1).toString().padStart(2, '0')}
-                           </span>
-                        </th>
-                      ))}
+                      {Array.from({ length: daysInMonth }).map((_, i) => {
+                        const isToday = i+1 === currentDay && habitMonth === currentMonth;
+                        return (
+                          <th key={i} ref={isToday ? todayRef : null} className="px-1 text-center min-w-[42px]">
+                             <span className={`text-[10px] font-black ${isToday ? 'text-[#3b82f6]' : 'text-[var(--text-muted)]'}`}>
+                                {(i+1).toString().padStart(2, '0')}
+                             </span>
+                          </th>
+                        );
+                      })}
                       <th className="px-4 text-center border-l border-[var(--border-color)]">
                          <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">Status</span>
                       </th>
@@ -355,7 +474,8 @@ export default function FlowPage() {
                   </thead>
                   <tbody>
                     {habits.map((h, idx) => {
-                      const done = Object.values((checked[h.id] || {})[monthKey] || {}).filter(Boolean).length;
+                      const monthData = checked[h.id]?.[`${currentYear}-${habitMonth}`] || {};
+                      const done = Object.values(monthData).filter(Boolean).length;
                       const goal = h.goal || daysInMonth;
                       const pct  = Math.min(Math.round((done / goal) * 100), 100);
                       return (
@@ -380,35 +500,34 @@ export default function FlowPage() {
                            </td>
                            {Array.from({ length: daysInMonth }).map((_, i) => {
                               const day = i + 1;
-                              const legacyData = checked[h.id]?.[day] === true;
-                              const isChecked = ((checked[h.id] || {})[monthKey]?.[day]) || legacyData;
-                              const isClickable = day === currentDay && habitMonth === currentMonth;
+                              const isToday = day === currentDay && habitMonth === currentMonth;
+                              const isChecked = checked[h.id]?.[monthKey]?.[day];
                               return (
                                 <td key={i} className="p-1">
                                    <button 
                                       onClick={() => {
-                                        if (!isClickable) return;
-                                        const habitData = checked[h.id] || {};
-                                        // Migrate legacy data if present for this day
-                                        const monthData = habitData[monthKey] || {};
+                                        if (!isToday) return; // Restrict to today only
+                                        const habitMonthData = checked[h.id] || {};
+                                        const currentMonthData = habitMonthData[monthKey] || {};
                                         const updated = { 
                                           ...checked, 
                                           [h.id]: { 
-                                            ...habitData, 
-                                            [monthKey]: { ...monthData, [day]: !isChecked } 
+                                            ...habitMonthData, 
+                                            [monthKey]: { ...currentMonthData, [day]: !isChecked } 
                                           } 
                                         };
                                         setChecked(updated);
+                                        localStorage.setItem('at-checked', JSON.stringify(updated));
                                         syncToCloud({ checked: updated });
                                       }}
-                                      className={`w-6 h-6 rounded-[7px] transition-all relative flex items-center justify-center group/btn ${!isClickable ? 'cursor-not-allowed opacity-50' : ''}`}
+                                      className={`w-6 h-6 rounded-[7px] transition-all relative flex items-center justify-center group/btn ${!isToday ? 'cursor-not-allowed opacity-60' : ''}`}
                                       style={{ 
                                         backgroundColor: isChecked ? h.color : 'transparent',
-                                        border: isChecked ? `1px solid ${h.color}` : '1px solid var(--border-color)'
+                                        border: isChecked ? `1px solid ${h.color}` : (isToday ? `1px solid ${h.color}40` : '1px solid var(--border-color)')
                                       }}
-                                      disabled={!isClickable}
+                                      title={!isToday ? "You can only track today's habits" : ""}
                                    >
-                                      {isChecked ? <i className={`fas fa-check text-[9px] ${isDark ? 'text-black' : 'text-white'}`} /> : (isClickable && <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted-faint)] opacity-0 group-hover/btn:opacity-100" />)}
+                                      {isChecked ? <i className={`fas fa-check text-[9px] ${isDark ? 'text-black' : 'text-white'}`} /> : <div className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted-faint)] opacity-0 group-hover/btn:opacity-100" />}
                                    </button>
                                 </td>
                               );

@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import NavBar from '@/components/NavBar';
 import { useTheme } from '@/pages/_app';
+import { db } from '@/lib/firebase';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 
 export default function TargetsPage() {
   const { data: session, status } = useSession();
@@ -25,7 +27,37 @@ export default function TargetsPage() {
     } catch {}
   }, []);
 
-  const saveGoals = (g) => { setGoals(g); localStorage.setItem('at-goals', JSON.stringify(g)); };
+  const saveGoals = (g) => { 
+    setGoals(g); 
+    localStorage.setItem('at-goals', JSON.stringify(g)); 
+    syncToCloud({ goals: g });
+  };
+
+  const syncToCloud = async (payload) => {
+    if (session?.user?.email) {
+      try {
+        await setDoc(doc(db, 'trackerSync', session.user.email), payload, { merge: true });
+      } catch (err) {
+        console.error('Cloud Sync Failed:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.email) {
+      const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), { includeMetadataChanges: true }, (docSnap) => {
+        if (docSnap.metadata.hasPendingWrites) return;
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.goals) {
+            setGoals(data.goals);
+            localStorage.setItem('at-goals', JSON.stringify(data.goals));
+          }
+        }
+      });
+      return () => unsub();
+    }
+  }, [status, session]);
 
   const addGoal = () => {
     if (!newGoal.trim()) return;

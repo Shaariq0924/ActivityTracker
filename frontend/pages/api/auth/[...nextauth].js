@@ -40,10 +40,27 @@ export default NextAuth({
                     id: userDoc.id,
                     name: user.name,
                     email: user.username,
+                    image: user.image || null,
                 };
             }
         })
     ],
+    callbacks: {
+        async jwt({ token, user }) {
+            if (user) {
+                token.id = user.id;
+                token.image = user.image;
+            }
+            return token;
+        },
+        async session({ session, token }) {
+            if (token) {
+                session.user.id = token.id;
+                session.user.image = token.image;
+            }
+            return session;
+        }
+    },
     pages: {
         signIn: '/portal',
     },

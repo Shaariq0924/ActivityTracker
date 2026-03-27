@@ -7,6 +7,36 @@ import NavBar from '@/components/NavBar';
 import { useTheme } from '@/pages/_app';
 import { db } from '@/lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  RadarController,
+  RadialLinearScale,
+  Title,
+  Tooltip,
+  Legend,
+  ArcElement,
+  Filler,
+} from 'chart.js';
+import { Line, Doughnut, Radar, Bar, PolarArea } from 'react-chartjs-2';
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  RadialLinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Filler,
+  Title,
+  Tooltip,
+  Legend
+);
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -35,6 +65,15 @@ export default function InsightsPage() {
     if (status === 'unauthenticated') router.push('/portal');
   }, [status, router]);
 
+  // INSTANT HYDRATION
+  useEffect(() => {
+    try {
+      const h = localStorage.getItem('at-habits'); if (h) setHabits(JSON.parse(h));
+      const c = localStorage.getItem('at-checked'); if (c) setChecked(JSON.parse(c));
+      const t = localStorage.getItem('at-tasks');   if (t) setTasks(JSON.parse(t));
+    } catch (e) {}
+  }, []);
+
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.email) {
       const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), (docSnap) => {
@@ -45,7 +84,7 @@ export default function InsightsPage() {
           if (data.tasks) setTasks(data.tasks);
         }
       });
-      return () => unsub(); // Teardown observer
+      return () => unsub();
     }
   }, [session, status]);
 
@@ -74,12 +113,95 @@ export default function InsightsPage() {
   let maxCount = 0;
   const dayCounts = Array.from({ length: daysInMonth }).map((_, i) => {
     const day = i + 1;
-    const count = habits.filter(h => ((checked[h.id] || {})[monthKey]?.[day]) || checked[h.id]?.[day] === true).length;
+    const count = habits.filter(h => ((checked[h.id] || {})[monthKey]?.[day])).length;
     if (count > maxCount) { maxCount = count; peakDay = day; }
     return count;
   });
   const peakPerformanceText = maxCount > 0 ? `DAY ${peakDay}` : 'N/A';
   const entropy = avgHabitPct > 70 ? 'LOW' : avgHabitPct > 40 ? 'MEDIUM' : 'HIGH';
+
+  // ─── CHART DATA PREP ──────────────────────────────────────────────────────
+  const last7DaysLabels = [];
+  const last7DaysData = [];
+  for (let i = 6; i >= 0; i--) {
+     const date = new Date();
+     date.setDate(date.getDate() - i);
+     last7DaysLabels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+     const mKey = `${date.getFullYear()}-${date.getMonth()}`;
+     const dNum = date.getDate();
+     const hCount = habits.filter(h => checked[h.id]?.[mKey]?.[dNum]).length;
+     last7DaysData.push(hCount);
+  }
+
+  const lineChartData = {
+    labels: last7DaysLabels,
+    datasets: [{
+      label: 'Performance Flow',
+      data: last7DaysData,
+      borderColor: '#3b82f6',
+      backgroundColor: 'rgba(59, 130, 246, 0.1)',
+      fill: true,
+      tension: 0.4,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+    }]
+  };
+
+  const radarData = {
+    labels: habitStats.map(h => h.name),
+    datasets: [{
+      label: 'Habit Stability',
+      data: habitStats.map(h => h.pct),
+      backgroundColor: 'rgba(59, 130, 246, 0.2)',
+      borderColor: '#3b82f6',
+      pointBackgroundColor: '#3b82f6',
+      borderWidth: 2,
+    }]
+  };
+
+  const doughnutData = {
+    labels: habitStats.map(h => h.name),
+    datasets: [{
+      data: habitStats.map(h => h.done),
+      backgroundColor: habitStats.map(h => h.color + 'aa'),
+      borderColor: habitStats.map(h => h.color),
+      borderWidth: 1,
+    }]
+  };
+
+  const chartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: isDark ? '#1a1a1a' : '#ffffff',
+        titleColor: isDark ? '#ffffff' : '#000000',
+        bodyColor: isDark ? '#ffffff' : '#000000',
+        borderColor: '#3b82f620',
+        borderWidth: 1,
+        padding: 12,
+        cornerRadius: 12,
+        displayColors: false,
+      }
+    },
+    scales: {
+      x: { display: true, grid: { display: false }, ticks: { color: 'rgba(156, 163, 175, 0.5)', font: { size: 9, weight: '900' } } },
+      y: { display: false }
+    }
+  };
+
+  const radarOptions = {
+    ...chartOptions,
+    scales: {
+      r: {
+        angleLines: { color: 'rgba(156, 163, 175, 0.1)' },
+        grid: { color: 'rgba(156, 163, 175, 0.1)' },
+        ticks: { display: false },
+        pointLabels: { color: 'rgba(156, 163, 175, 0.8)', font: { size: 9, weight: '900' } }
+      }
+    }
+  };
 
   const isAuthLoading = status === 'loading';
 
@@ -137,6 +259,38 @@ export default function InsightsPage() {
              <p className="text-xs font-bold text-[var(--muted)] mt-2">Total active parameters tracked</p>
           </motion.div>
         </motion.div>
+
+        {/* Consolidated Charts Section */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-[40px] p-6 border border-[var(--border)] h-[300px] flex flex-col">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-6 flex items-center gap-2">
+                 <i className="fas fa-chart-line text-[#3b82f6]" /> Performance Momentum
+              </h3>
+              <div className="flex-1 min-h-0">
+                 <Line data={lineChartData} options={chartOptions} />
+              </div>
+           </motion.div>
+
+           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="glass rounded-[40px] p-6 border border-[var(--border)] h-[300px] flex flex-col">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-6 flex items-center gap-2">
+                 <i className="fas fa-bullseye text-[#3b82f6]" /> Habit Balance Radar
+              </h3>
+              <div className="flex-1 min-h-0">
+                 <Radar data={radarData} options={radarOptions} />
+              </div>
+           </motion.div>
+
+           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="glass rounded-[40px] p-6 border border-[var(--border)] h-[300px] flex flex-col">
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-[var(--muted)] mb-6 flex items-center gap-2">
+                 <i className="fas fa-chart-pie text-[#10b981]" /> Commitment Density
+              </h3>
+              <div className="flex-1 min-h-0 flex items-center justify-center p-4">
+                 <div className="w-full h-full">
+                    <Doughnut data={doughnutData} options={{ ...chartOptions, scales: { x: { display: false }, y: { display: false } } }} />
+                 </div>
+              </div>
+           </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
            {/* Detailed Habit breakdown */}

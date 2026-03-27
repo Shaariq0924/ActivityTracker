@@ -1,7 +1,9 @@
 import Head from 'next/head';
 import { signIn } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useRouter } from 'next/router';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export default function PortalPage() {
   const router = useRouter();
@@ -11,6 +13,9 @@ export default function PortalPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const fileInputRef = useRef(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -18,12 +23,18 @@ export default function PortalPage() {
     setError('');
 
     if (isRegister) {
-      // Registration flow
       try {
+        let imageUrl = null;
+        if (imageFile) {
+          const storageRef = ref(storage, `profiles/${username}-${Date.now()}`);
+          const snapshot = await uploadBytes(storageRef, imageFile);
+          imageUrl = await getDownloadURL(snapshot.ref);
+        }
+
         const res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name, username, password }),
+          body: JSON.stringify({ name, username, password, image: imageUrl }),
         });
         const data = await res.json();
         
@@ -53,7 +64,7 @@ export default function PortalPage() {
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden"
          style={{ background: 'radial-gradient(ellipse at 50% 0%, #001029 0%, #0a0805 70%)' }}>
-      <Head><title>Activity Tracker — {isRegister ? 'Create Account' : 'Sign In'}</title></Head>
+      <Head><title>{`Activity Tracker — ${isRegister ? 'Create Account' : 'Sign In'}`}</title></Head>
 
       {/* Glow orbs */}
       <div className="absolute top-0 left-1/3 w-96 h-96 rounded-full blur-3xl pointer-events-none glow-pulse"
@@ -62,12 +73,43 @@ export default function PortalPage() {
            style={{ background: 'radial-gradient(circle, #60a5fa15 0%, transparent 70%)', animationDelay: '1.5s' }} />
 
       <div className="z-10 w-full max-w-md px-6 py-10">
-        {/* Logo */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl mb-4 float shadow-[0_0_30px_rgba(59,130,246,0.3)]"
-               style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)' }}>
-            <span className="text-white font-black text-2xl tracking-tighter">AT</span>
-          </div>
+        <div className="text-center mb-8">
+          {/* AI Avatar Upload */}
+          {isRegister ? (
+            <div className="relative inline-block mb-6 group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+               <div className="w-24 h-24 rounded-[2rem] overflow-hidden border-2 border-[#3b82f640] glass transition-all group-hover:border-[#3b82f6] shadow-2xl relative">
+                  {imagePreview ? (
+                    <img src={imagePreview} className="w-full h-full object-cover" alt="Preview" />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-[#3b82f605]">
+                       <i className="fas fa-camera text-[#3b82f6] text-xl mb-1" />
+                       <span className="text-[8px] font-black uppercase text-[#3b82f6]">Add Photo</span>
+                    </div>
+                  )}
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                     <i className="fas fa-cloud-upload text-white text-xs" />
+                  </div>
+               </div>
+               <input 
+                 type="file" 
+                 ref={fileInputRef} 
+                 className="hidden" 
+                 accept="image/*" 
+                 onChange={(e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                      setImageFile(file);
+                      setImagePreview(URL.createObjectURL(file));
+                    }
+                 }}
+               />
+            </div>
+          ) : (
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-3xl mb-4 float shadow-[0_0_30px_rgba(59,130,246,0.3)]"
+                 style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)' }}>
+              <span className="text-white font-black text-2xl tracking-tighter">AT</span>
+            </div>
+          )}
           <h1 className="text-3xl font-black text-white tracking-tight">Activity Tracker</h1>
           <p className="text-sm mt-2 font-medium" style={{ color: '#78716c' }}>
             {isRegister ? 'Join the next-gen productivity system' : 'Your personal habits, tasks & goals hub'}
@@ -136,7 +178,7 @@ export default function PortalPage() {
             <button type="submit" disabled={loading}
               className="w-full py-4 rounded-xl font-black text-sm tracking-wide text-white transition-all hover:opacity-90 disabled:opacity-50 mt-2"
               style={{ background: 'linear-gradient(135deg, #3b82f6, #60a5fa)', boxShadow: '0 0 20px #3b82f633' }}>
-              {loading ? 'Processing...' : isRegister ? 'CREATE ACCOUNT →' : 'START TRACKING →'}
+              {loading ? 'Processing...' : isRegister ? 'SIGN UP →' : 'LOG IN →'}
             </button>
           </form>
 
