@@ -89,6 +89,17 @@ export default function Home() {
     if (status === 'unauthenticated') router.push('/portal');
   }, [status, router]);
 
+  // INSTANT HYDRATION: Load from localStorage before cloud resolves
+  useEffect(() => {
+    try {
+      const h = localStorage.getItem('at-habits'); if (h) setHabits(JSON.parse(h));
+      const c = localStorage.getItem('at-checked'); if (c) setChecked(JSON.parse(c));
+      const t = localStorage.getItem('at-tasks');   if (t) setTasks(JSON.parse(t));
+      const g = localStorage.getItem('at-goals');   if (g) setGoals(JSON.parse(g));
+      const j = localStorage.getItem('at-journal'); if (j) setEntries(JSON.parse(j));
+    } catch (e) { console.error('Local Hydration Failure:', e); }
+  }, []);
+
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.email) {
       const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), { includeMetadataChanges: true }, (docSnap) => {

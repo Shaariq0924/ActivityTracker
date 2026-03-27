@@ -76,12 +76,22 @@ export default function InsightsPage() {
 
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.email) {
-      const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), (docSnap) => {
+      const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), { includeMetadataChanges: true }, (docSnap) => {
+        if (docSnap.metadata.hasPendingWrites) return;
         if (docSnap.exists()) {
           const data = docSnap.data();
-          if (data.habits) setHabits(data.habits);
-          if (data.checked) setChecked(data.checked);
-          if (data.tasks) setTasks(data.tasks);
+          if (data.habits) {
+            setHabits(data.habits);
+            localStorage.setItem('at-habits', JSON.stringify(data.habits));
+          }
+          if (data.checked) {
+            setChecked(data.checked);
+            localStorage.setItem('at-checked', JSON.stringify(data.checked));
+          }
+          if (data.tasks) {
+            setTasks(data.tasks);
+            localStorage.setItem('at-tasks', JSON.stringify(data.tasks));
+          }
         }
       });
       return () => unsub();
