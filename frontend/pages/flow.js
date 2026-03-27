@@ -141,61 +141,44 @@ export default function FlowPage() {
   useEffect(() => {
     if (status === 'authenticated' && session?.user?.email) {
       const unsub = onSnapshot(doc(db, 'trackerSync', session.user.email), { includeMetadataChanges: true }, (docSnap) => {
-        // Skip updates that were triggered by local optimistic changes, unless we need to rescue data
         if (docSnap.metadata.hasPendingWrites) return;
 
         if (docSnap.exists()) {
+          // CLOUD IS THE SINGLE SOURCE OF TRUTH — always trust server data
           const data = docSnap.data();
-          let rescued = false;
-          let recH = data.habits || [];
-          let recC = data.checked || {};
-          let recT = data.tasks || [];
-          let recJ = data.journal || [];
-          let recE = data.eduNotes || [];
+          const cloudH = data.habits || [];
+          const cloudC = data.checked || {};
+          const cloudT = data.tasks || [];
+          const cloudJ = data.journal || [];
+          const cloudE = data.eduNotes || [];
 
-          // EMERGENCY RECOVERY PROTOCOL: Only rescue if BOTH cloud is empty AND we have local data
-          if (recH.length === 0 && recT.length === 0) {
-            try {
-              const lh = localStorage.getItem('at-habits'); if (lh && JSON.parse(lh).length > 0) { recH = JSON.parse(lh); rescued = true; }
-              const lc = localStorage.getItem('at-checked'); if (lc) { recC = JSON.parse(lc); rescued = true; }
-              const lt = localStorage.getItem('at-tasks'); if (lt && JSON.parse(lt).length > 0) { recT = JSON.parse(lt); rescued = true; }
-              const lj = localStorage.getItem('at-journal'); if (lj && JSON.parse(lj).length > 0) { recJ = JSON.parse(lj); rescued = true; }
-              const le = localStorage.getItem('at-edu-notes'); if (le && JSON.parse(le).length > 0) { recE = JSON.parse(le); rescued = true; }
-            } catch (err) {}
-          }
+          setHabits(cloudH);
+          setChecked(cloudC);
+          setTasks(cloudT);
+          setEntries(cloudJ);
+          setEduNotes(cloudE);
 
-          setHabits(recH);
-          setChecked(recC);
-          setTasks(recT);
-          setEntries(recJ);
-          setEduNotes(recE);
-
-          // Update local cache to match confirmed server state
-          localStorage.setItem('at-habits', JSON.stringify(recH));
-          localStorage.setItem('at-checked', JSON.stringify(recC));
-          localStorage.setItem('at-tasks', JSON.stringify(recT));
-          localStorage.setItem('at-journal', JSON.stringify(recJ));
-          localStorage.setItem('at-edu-notes', JSON.stringify(recE));
-
-          if (rescued) {
-             syncToCloud({ habits: recH, checked: recC, tasks: recT, journal: recJ, eduNotes: recE });
-          }
+          // Update local cache to match confirmed cloud state
+          localStorage.setItem('at-habits', JSON.stringify(cloudH));
+          localStorage.setItem('at-checked', JSON.stringify(cloudC));
+          localStorage.setItem('at-tasks', JSON.stringify(cloudT));
+          localStorage.setItem('at-journal', JSON.stringify(cloudJ));
+          localStorage.setItem('at-edu-notes', JSON.stringify(cloudE));
         } else {
-           // No cloud record found, initialize from local or keep current
-           const h = localStorage.getItem('at-habits'); 
-           if (h && JSON.parse(h).length > 0) {
-              const rH = JSON.parse(h);
-              const rC = JSON.parse(localStorage.getItem('at-checked') || '{}');
-              const rT = JSON.parse(localStorage.getItem('at-tasks') || '[]');
-              const rJ = JSON.parse(localStorage.getItem('at-journal') || '[]');
-              const rE = JSON.parse(localStorage.getItem('at-edu-notes') || '[]');
-              
-              setHabits(rH); setChecked(rC); setTasks(rT); setEntries(rJ); setEduNotes(rE);
-              syncToCloud({ habits: rH, checked: rC, tasks: rT, journal: rJ, eduNotes: rE });
-           }
+          // No cloud document exists yet — first-time user, seed cloud from local
+          try {
+            const lh = JSON.parse(localStorage.getItem('at-habits') || '[]');
+            const lc = JSON.parse(localStorage.getItem('at-checked') || '{}');
+            const lt = JSON.parse(localStorage.getItem('at-tasks') || '[]');
+            const lj = JSON.parse(localStorage.getItem('at-journal') || '[]');
+            const le = JSON.parse(localStorage.getItem('at-edu-notes') || '[]');
+            if (lh.length > 0 || lt.length > 0) {
+              syncToCloud({ habits: lh, checked: lc, tasks: lt, journal: lj, eduNotes: le });
+            }
+          } catch(e) {}
         }
       });
-      return () => unsub(); // Teardown observer
+      return () => unsub();
     }
   }, [session, status]);
 
