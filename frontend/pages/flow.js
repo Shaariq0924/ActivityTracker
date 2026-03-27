@@ -221,6 +221,7 @@ export default function FlowPage() {
     const h = { id: Date.now(), name: newHabit, emoji: selectedEmoji, color: '#3b82f6', goal: 31, priority: 'Medium', logs: {} };
     const updated = [...habits, h];
     setHabits(updated);
+    localStorage.setItem('at-habits', JSON.stringify(updated));
     syncToCloud({ habits: updated });
     setNewHabit('');
     setShowAddHabit(false);
@@ -268,12 +269,14 @@ export default function FlowPage() {
     const n = { id: Date.now(), text: newNote, goalLink: noteGoal, date: todayStr };
     const updated = [n, ...eduNotes];
     setEduNotes(updated);
+    localStorage.setItem('at-edu-notes', JSON.stringify(updated));
     syncToCloud({ eduNotes: updated });
     setNewNote(''); setNoteGoal('');
   };
   const deleteEduNote = (id) => {
     const updated = eduNotes.filter(n => n.id !== id);
     setEduNotes(updated);
+    localStorage.setItem('at-edu-notes', JSON.stringify(updated));
     syncToCloud({ eduNotes: updated });
   };
 
